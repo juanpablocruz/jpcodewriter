@@ -1,0 +1,11 @@
+
+@font-face {
+    font-family: 'PRNumber3';
+    src: url('./assets/fonts/PRNumber3.ttf')  format('truetype'), /* Safari, Android, iOS */
+  }
+
+  
+body {
+  height: 100%;
+  background: black;
+}

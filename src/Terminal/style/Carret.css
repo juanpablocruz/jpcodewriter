@@ -1,0 +1,58 @@
+@-webkit-keyframes cursor-blink {
+    0% {
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @-moz-keyframes cursor-blink {
+    0% {
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @keyframes cursor-blink {
+    0% {
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  .carret:after {
+    display: inline-block;
+    vertical-align: -0.15em;
+    width: 0.75em;
+    height: 1em;
+    margin-left: 5px;
+    -webkit-animation: cursor-blink 1.25s steps(1) infinite;
+    -moz-animation: cursor-blink 1.25s steps(1) infinite;
+    animation: cursor-blink 1.25s steps(1) infinite;
+    content: '';
+  }
+
+  .carret.amber:after {
+    background: #FFB000;
+    box-shadow: 1px 1px 1px rgba(255,176,0, 0.8), -1px -1px 1px rgba(255,176,0, 0.8), 1px -1px 1px rgba(255,176,0, 0.8), -1px 1px 1px rgba(255,176,0, 0.8);
+  }
+  .carret.green1:after {
+    background: #33FF00;
+    box-shadow: 1px 1px 1px rgba(51,255,0, 0.8), -1px -1px 1px rgba(51,255,0, 0.8), 1px -1px 1px rgba(51,255,0, 0.8), -1px 1px 1px rgba(51,255,0, 0.8);
+  }
+  .carret.appleGreen:after {
+    background: #33FF33;
+    box-shadow: 1px 1px 1px rgba(51,255,51, 0.8), -1px -1px 1px rgba(51,255,51, 0.8), 1px -1px 1px rgba(51,255,51, 0.8), -1px 1px 1px rgba(51,255,51, 0.8);
+  }

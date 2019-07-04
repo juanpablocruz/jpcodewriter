@@ -1,0 +1,12 @@
+.vim-footer-status {
+    width: 100%;
+    background: white;
+    vertical-align: middle;
+    line-height: 1em;
+    height: 1em;
+}
+
+.vim-footer-mode {
+    color: white;
+    text-transform: uppercase;
+}

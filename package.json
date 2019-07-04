@@ -3,9 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@types/figlet": "^1.2.0",
+    "@types/jest": "^24.0.15",
+    "@types/node": "^12.0.10",
+    "@types/react": "^16.8.22",
+    "@types/react-dom": "^16.8.4",
+    "@types/websql": "0.0.27",
+    "ascii-art": "^1.5.1",
+    "figlet": "^1.2.3",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
-    "react-scripts": "3.0.1"
+    "react-scramble": "^0.4.2",
+    "react-scripts": "3.0.1",
+    "terminal-in-react": "^4.3.1",
+    "terminal-in-react-node-eval-plugin": "^2.0.0",
+    "terminal-in-react-pseudo-file-system-plugin": "^3.0.0",
+    "typescript": "^3.5.2",
+    "websql": "^1.0.0"
   },
   "scripts": {
     "start": "react-scripts start",

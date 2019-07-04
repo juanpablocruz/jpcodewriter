@@ -1,0 +1,10 @@
+.vim {
+    color: purple;
+    width: 100%;
+}
+
+.vim p {
+    line-height: 1.1em;
+    margin: 0;
+    height: 1.1em;
+}
