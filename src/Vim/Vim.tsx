@@ -70,7 +70,7 @@ export default class Vim extends Component<Props, State>{
     }
 
     getNumberOfLines() {
-        return Math.abs(window.innerHeight / 16)
+        return Math.abs(window.innerHeight / 16) + 2
     }
 
     handleMovementKeys(direction: CarretMovement) {
@@ -331,7 +331,7 @@ export default class Vim extends Component<Props, State>{
 
         return <div className="vim">
             <pre>{renderBoard}</pre>
-            <Footer mode={this.state.mode} fileName={this.state.file.name} commandText={this.state.commandText} />
+            <Footer mode={this.state.mode} fileName={this.state.file && this.state.file.name ? this.state.file.name : ''} commandText={this.state.commandText} />
         </div>
     }
 }

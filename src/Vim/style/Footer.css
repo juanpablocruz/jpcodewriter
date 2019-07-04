@@ -9,4 +9,5 @@
 .vim-footer-mode {
     color: white;
     text-transform: uppercase;
+    font-weight: lighter;
 }

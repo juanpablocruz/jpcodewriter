@@ -4,7 +4,6 @@ import Boot from './Boot';
 import Filesystem from './FileSystem/Filesystem';
 import Vim from '../Vim/Vim';
 
-
 interface Command {
     command: any,
     description: string,
@@ -56,6 +55,10 @@ interface State {
     fileSystem: Filesystem,
     programMode: boolean,
     programArgs: Arguments[]
+    rtcConnection: RTCPeerConnection
+    remoteConnection: RTCPeerConnection
+    sendChannel: RTCDataChannel
+    receiveChannel?: RTCDataChannel
 }
 
 
@@ -89,12 +92,15 @@ class Terminal extends Component<Props, State> {
         this.getPrevCommand = this.getPrevCommand.bind(this)
         this.finnishBoot = this.finnishBoot.bind(this)
         this.pageScroll = this.pageScroll.bind(this)
+        this.handleSendChannelStatusChange = this.handleSendChannelStatusChange.bind(this)
+        this.receiveChannelCallback = this.receiveChannelCallback.bind(this)
+        this.handleReceiveChannelStatusChange = this.handleReceiveChannelStatusChange.bind(this)
 
 
         this.scrolldelay = null
 
         const defaultCommands: { [key: string]: Command } = {
-            help: { command: this.help, description: "shows help text. Help <command> will display usage information about <command> if available" },
+            help: { command: this.help, description: "shows help text. Help <command> will display usage information about <command>" },
             clear: { command: this.clear, description: "clears the screen" },
             ls: { command: this.ls, description: "displays folder information" },
             cd: { command: this.cd, description: "change folder" },
@@ -106,6 +112,7 @@ class Terminal extends Component<Props, State> {
             greenmode: { command: this.greenmode, description: "" },
             ambarmode: { command: this.ambarmode, description: "" },
             pinkmode: { command: this.pinkmode, description: "" },
+            say: { command: this.say, description: "" },
         }
 
         let oldLog = window.console.log
@@ -115,6 +122,34 @@ class Terminal extends Component<Props, State> {
                  oldLog(...args)
              }
       */
+
+        
+
+        let rtcConnection= new RTCPeerConnection()
+        let sendChannel = rtcConnection.createDataChannel("sendChannel")
+        sendChannel.onopen = this.handleSendChannelStatusChange
+        sendChannel.onclose = this.handleSendChannelStatusChange
+        let remoteConnection = new RTCPeerConnection()
+        remoteConnection.ondatachannel = this.receiveChannelCallback
+
+
+        rtcConnection.onicecandidate = e => !e.candidate 
+             || remoteConnection.addIceCandidate(e.candidate)
+             .catch(this.handleAddCandidateError)
+
+        remoteConnection.onicecandidate = e => !e.candidate
+             || rtcConnection.addIceCandidate(e.candidate)
+             .catch(this.handleAddCandidateError)
+
+        rtcConnection.createOffer()
+             .then(offer => rtcConnection.setLocalDescription(offer))
+             .then(() => remoteConnection.setRemoteDescription(rtcConnection.localDescription as RTCSessionDescriptionInit))
+             .then(() => remoteConnection.createAnswer())
+             .then(answer => remoteConnection.setLocalDescription(answer))
+             .then(() => rtcConnection.setRemoteDescription(remoteConnection.localDescription as RTCSessionDescriptionInit))
+             .catch(this.handleCreateDescriptionError)
+
+        
 
         this.state = {
             color: color,
@@ -127,10 +162,61 @@ class Terminal extends Component<Props, State> {
             initializing: true,
             fileSystem: new Filesystem(),
             programMode: false,
-            programArgs: []
+            programArgs: [],
+            rtcConnection:rtcConnection,
+            remoteConnection:remoteConnection,
+            sendChannel: sendChannel
         }
 
     }
+
+    componentWillUnmount() {
+        this.state.sendChannel.close()
+        if (this.state.receiveChannel)
+            this.state.receiveChannel.close()
+
+        this.state.rtcConnection.close()
+        this.state.remoteConnection.close()
+
+
+    }
+
+    receiveChannelCallback(event:any) {
+        let receiveChannel = event.channel;
+        receiveChannel.onmessage = this.handleReceiveMessage;
+        receiveChannel.onopen = this.handleReceiveChannelStatusChange;
+        receiveChannel.onclose = this.handleReceiveChannelStatusChange;
+        this.setState({receiveChannel})
+      }
+
+    handleCreateDescriptionError() {
+        
+    }
+
+    handleAddCandidateError() {
+
+    }
+
+    handleReceiveMessage(event:any) {
+        console.log(event)
+    }
+
+    sendMessage(message: string) {
+        this.state.sendChannel.send(message)
+    }
+
+    handleReceiveChannelStatusChange(event: any) {
+        if (this.state.receiveChannel) {
+            console.log("Receive channel's status has changed to " + this.state.receiveChannel.readyState)
+        }
+    }
+
+    handleSendChannelStatusChange(event: any) {
+        if (this.state.sendChannel) {
+            var state = this.state.sendChannel.readyState;
+
+          }
+    } 
 
     greenmode = () => {
         this.setState({color: AppleGreen})
@@ -154,15 +240,20 @@ class Terminal extends Component<Props, State> {
         }
     }
 
+    say = (args: string[], print: any) => {
+        this.sendMessage(args.join(" "))
+    }
+
     help = (args: string[], print: any) => {
         if (args.length === 0) {
             let helpText = []
-
             let commands = this.state.commands
             for (let command in commands) {
                 let obj: { [key: string]: string } = {}
-                obj[command] = commands[command].description || "undefined"
-                helpText.push(obj)
+                if (commands[command].description.length) {
+                    obj[command] = commands[command].description
+                    helpText.push(obj)
+                }
             }
             print(...helpText.map((value) => Object.keys(value)[0] + ":\t" + Object.values(value)[0]))
         } else {

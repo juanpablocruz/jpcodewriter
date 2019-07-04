@@ -25,12 +25,12 @@ export default class Filesystem {
                 tran.executeSql('CREATE TABLE IF NOT EXISTS FileSystem_details(id_file integer, details text)')
                 this.insertIfNotExists([0, "/usr", "usr", "folder"], tran)
                 this.insertIfNotExists([1, "/usr/home", "home", "folder"], tran)
-            }, (err: any) => console.error(err), (rdy: any) => console.info("Ready", rdy))
+            })
         } else {
             console.error("no instance")
         }
 
-        this.currentFolder = { id: 1, fullPath: "/usr", name: "usr", type: "folder", id_parent: 0 }
+        this.currentFolder = { id: 2, fullPath: "/usr/home", name: "home", type: "folder", id_parent: 1 }
         this.currentFolderContents = []
 
         this.getFolder(this.currentFolder.id, (data: Folder[]) => this.currentFolderContents = this.appendCurrentAndParentFolder(data))
