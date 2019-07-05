@@ -1,4 +1,5 @@
 import { Pool, Particle, Bullet, Asteroid, Ship, Vec2D } from "./GameClasses";
+import { Color } from "../../Terminal/Terminal";
 
 export default class Game {
     canvas: any
@@ -29,9 +30,10 @@ export default class Game {
     skillConquered: any
     finishGame: any
     registerAnimationFrame: any
+    color: Color
 
 
-    constructor(canvas: any, skills: string[], skillConquered: any, finishGame: any, registerAnimationFrame: any) {
+    constructor(canvas: any, skills: string[], color:Color, skillConquered: any, finishGame: any, registerAnimationFrame: any) {
         this.canvas = canvas
         this.context = this.canvas.getContext('2d')
 
@@ -69,6 +71,8 @@ export default class Game {
 
         this.asteroidPool = new Pool(Asteroid, skills.length)
         this.asteroids = []
+
+        this.color = color
 
         this.ship = new Ship(this.screenWidth >> 1, this.screenHeight >> 1, this)
 
@@ -310,6 +314,7 @@ export default class Game {
         a.vel.setLength(1 + this.asteroidVelFactor)
         a.vel.setAngle(Math.random() * (Math.PI * 2))
         a.name = skillName
+        a.color = this.color.color
 
         this.asteroids[this.asteroids.length] = a
         this.asteroidVelFactor += 0.025
@@ -402,7 +407,7 @@ export default class Game {
 
             p.radius = Math.random() * (asteroid.radius >> 2) + 2
             p.lifeSpan = 80
-            p.color = '#FF5900'
+            p.color = this.color.color
             p.vel.setLength(20 / p.radius)
             p.vel.setAngle(this.ship.angle + (1 - Math.random() * 2) * (Math.PI * 2))
             p.pos.setXY(asteroid.pos.getX() + Math.cos(p.vel.getAngle()) * (asteroid.radius * 0.8), asteroid.pos.getY() + Math.sin(p.vel.getAngle()) * (asteroid.radius * 0.8))

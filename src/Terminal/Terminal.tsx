@@ -270,7 +270,7 @@ class Terminal extends Component<Props, State> {
 
     skills = (args: string[], print: any) => {
 
-        let program = <Skills return={() => {this.setState({programMode: false, program: null})}}/>
+        let program = <Skills return={() => {this.setState({programMode: false, program: null})}} color={this.state.color}/>
         this.setState({programMode: true, programArgs: [], program: program})
     }
 
