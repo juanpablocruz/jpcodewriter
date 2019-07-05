@@ -2,7 +2,7 @@ import React, { Component } from 'react'
 import skillsFile from "./skills_list.json"
 import SkillsHeader from './SkillsHeader';
 import Asteroids from './Asteroids';
-
+import './styles/Skills.css'
 
 interface Props {
     return: any
@@ -40,6 +40,7 @@ export default class Skills extends Component<Props, State>{
         return <div>
             <SkillsHeader skills={this.state.skills} conquered={this.state.conquered}/>
             <Asteroids skills={this.state.skills} skillConquered={this.skillConquered} return={this.props.return}/>
+            <p className="help-text">Press ESC to exit</p>
         </div>
     }
 }

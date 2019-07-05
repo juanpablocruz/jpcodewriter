@@ -1,3 +1,22 @@
 {
-    "skills": ["PHP", "JavaScript", "TypeScript", "React", "C", "C++", "C#", "Java", "Go", "Python", "Word", "Ilustrator"]
+    "skills": [
+        "PHP",
+        "JavaScript",
+        "TypeScript",
+        "React",
+        "C",
+        "C++",
+        "C#",
+        "Java",
+        "Go",
+        "Python",
+        "Ilustrator",
+        "InDesign",
+        "JQuery",
+        "SQL Server",
+        "MySQL",
+        "HTML5",
+        "Assembly",
+        "GraphQL"
+    ]
 }

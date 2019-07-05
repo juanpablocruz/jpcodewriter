@@ -2,6 +2,7 @@
     color: #FFB000;
     padding:0.5em 1em  0.5em 1em ;
     position: relative;
+    margin: 0.3em;
 }
 
 .skill-badge.conquered span{
