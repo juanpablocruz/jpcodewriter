@@ -1,8 +1,7 @@
 import React from 'react';
-import logo from './logo.svg';
 import './App.css';
 import Terminal from './Terminal/Terminal';
-import Vim from './Vim/Vim';
+import Skills from './Skills/Skills';
 
 const about = (args: string[], print: any) => print("HI, MY NAME IS JUAN PABLO",
   "IM NOT VERY GOOD ON TALKING ABOUT MYSELF SO I DECIDED TO CREATE",
@@ -103,6 +102,7 @@ const commands = {
 
 const App = (props: any) => {
   return (<div
+  className="App"
     style={{
       display: "flex",
       justifyContent: "center",
@@ -110,10 +110,11 @@ const App = (props: any) => {
       height: "100%"
     }}
   >
-    <Terminal style={{ fontWeight: 'bold', fontSize: '1em' }}
+   
+   <Terminal style={{ fontWeight: 'bold', fontSize: '1em' }}
       commands={commands}
       msg="Welcome to Juan Pablo Cruz Maseda's personal page. Try typing 'help'."
-    />
+    /> 
   </div>)
 }
 

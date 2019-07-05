@@ -11,3 +11,9 @@
     white-space: pre-wrap;
     margin-bottom: 0.75em;
 }
+
+@media(max-width:400px) {
+    .logo {
+        font-size: 0.3em;
+    }
+}

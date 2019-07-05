@@ -3,3 +3,9 @@
     font-size: 0.9em;
     width: 50em;
 }
+@media(max-width:400px) {
+    .screen {
+        margin: 1em;
+        width: 31em;
+    }
+}

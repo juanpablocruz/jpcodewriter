@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React from 'react'
 import './style/Footer.css'
 import { Mode } from './Vim';
 interface Props {

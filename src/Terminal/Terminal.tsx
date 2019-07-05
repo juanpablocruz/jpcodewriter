@@ -3,6 +3,8 @@ import Screen from './Screen'
 import Boot from './Boot';
 import Filesystem from './FileSystem/Filesystem';
 import Vim from '../Vim/Vim';
+import "./style/Terminal.css"
+import Skills from '../Skills/Skills';
 
 interface Command {
     command: any,
@@ -55,16 +57,12 @@ interface State {
     fileSystem: Filesystem,
     programMode: boolean,
     programArgs: Arguments[]
-    rtcConnection: RTCPeerConnection
-    remoteConnection: RTCPeerConnection
-    sendChannel: RTCDataChannel
-    receiveChannel?: RTCDataChannel
+    program: any
 }
 
 
 let Ambar: Color = { name: "amber", color: "#FFB000", shadow: { color: "rgba(255,176,0, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
-let Pink: Color = { name: "amber", color: "#FF1493", shadow: { color: "rgba(255, 20, 147, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
-let Green1: Color = { name: "green1", color: "#33FF00", shadow: { color: "rgba(51,255,0, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
+let Pink: Color = { name: "pink", color: "#FF1493", shadow: { color: "rgba(255, 20, 147, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
 let AppleGreen: Color = { name: "appleGreen", color: "#33FF33", shadow: { color: "rgba(51,255,51, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
 
 class Terminal extends Component<Props, State> {
@@ -92,9 +90,6 @@ class Terminal extends Component<Props, State> {
         this.getPrevCommand = this.getPrevCommand.bind(this)
         this.finnishBoot = this.finnishBoot.bind(this)
         this.pageScroll = this.pageScroll.bind(this)
-        this.handleSendChannelStatusChange = this.handleSendChannelStatusChange.bind(this)
-        this.receiveChannelCallback = this.receiveChannelCallback.bind(this)
-        this.handleReceiveChannelStatusChange = this.handleReceiveChannelStatusChange.bind(this)
 
 
         this.scrolldelay = null
@@ -109,47 +104,20 @@ class Terminal extends Component<Props, State> {
             vi: { command: this.vi, description: "file editor vi" },
             rm: { command: this.rm, description: "removes file" },
             cat: { command: this.cat, description: "reads a file" },
+            skills: { command: this.skills, description: "show the skills" },
             greenmode: { command: this.greenmode, description: "" },
             ambarmode: { command: this.ambarmode, description: "" },
             pinkmode: { command: this.pinkmode, description: "" },
-            say: { command: this.say, description: "" },
         }
 
+        /* 
         let oldLog = window.console.log
 
-        /*      window.console.log = (...args:any) => {
+             window.console.log = (...args:any) => {
                  this.print(...args)
                  oldLog(...args)
              }
-      */
-
-        
-
-        let rtcConnection= new RTCPeerConnection()
-        let sendChannel = rtcConnection.createDataChannel("sendChannel")
-        sendChannel.onopen = this.handleSendChannelStatusChange
-        sendChannel.onclose = this.handleSendChannelStatusChange
-        let remoteConnection = new RTCPeerConnection()
-        remoteConnection.ondatachannel = this.receiveChannelCallback
-
-
-        rtcConnection.onicecandidate = e => !e.candidate 
-             || remoteConnection.addIceCandidate(e.candidate)
-             .catch(this.handleAddCandidateError)
-
-        remoteConnection.onicecandidate = e => !e.candidate
-             || rtcConnection.addIceCandidate(e.candidate)
-             .catch(this.handleAddCandidateError)
-
-        rtcConnection.createOffer()
-             .then(offer => rtcConnection.setLocalDescription(offer))
-             .then(() => remoteConnection.setRemoteDescription(rtcConnection.localDescription as RTCSessionDescriptionInit))
-             .then(() => remoteConnection.createAnswer())
-             .then(answer => remoteConnection.setLocalDescription(answer))
-             .then(() => rtcConnection.setRemoteDescription(remoteConnection.localDescription as RTCSessionDescriptionInit))
-             .catch(this.handleCreateDescriptionError)
-
-        
+        */  
 
         this.state = {
             color: color,
@@ -163,60 +131,9 @@ class Terminal extends Component<Props, State> {
             fileSystem: new Filesystem(),
             programMode: false,
             programArgs: [],
-            rtcConnection:rtcConnection,
-            remoteConnection:remoteConnection,
-            sendChannel: sendChannel
-        }
-
-    }
-
-    componentWillUnmount() {
-        this.state.sendChannel.close()
-        if (this.state.receiveChannel)
-            this.state.receiveChannel.close()
-
-        this.state.rtcConnection.close()
-        this.state.remoteConnection.close()
-
-
-    }
-
-    receiveChannelCallback(event:any) {
-        let receiveChannel = event.channel;
-        receiveChannel.onmessage = this.handleReceiveMessage;
-        receiveChannel.onopen = this.handleReceiveChannelStatusChange;
-        receiveChannel.onclose = this.handleReceiveChannelStatusChange;
-        this.setState({receiveChannel})
-      }
-
-    handleCreateDescriptionError() {
-        
-    }
-
-    handleAddCandidateError() {
-
-    }
-
-    handleReceiveMessage(event:any) {
-        console.log(event)
-    }
-
-    sendMessage(message: string) {
-        this.state.sendChannel.send(message)
-    }
-
-    handleReceiveChannelStatusChange(event: any) {
-        if (this.state.receiveChannel) {
-            console.log("Receive channel's status has changed to " + this.state.receiveChannel.readyState)
+            program: null
         }
     }
-
-    handleSendChannelStatusChange(event: any) {
-        if (this.state.sendChannel) {
-            var state = this.state.sendChannel.readyState;
-
-          }
-    } 
 
     greenmode = () => {
         this.setState({color: AppleGreen})
@@ -238,10 +155,6 @@ class Terminal extends Component<Props, State> {
                 print(data[0].details)
             })
         }
-    }
-
-    say = (args: string[], print: any) => {
-        this.sendMessage(args.join(" "))
     }
 
     help = (args: string[], print: any) => {
@@ -304,6 +217,7 @@ class Terminal extends Component<Props, State> {
 
     vi = (args: string[], print: any) => {
         let programArgs : Arguments[] = []
+        
         if (args.length > 0) {
             if (this.state.fileSystem.currentFolderContents.find(e => e.name === args[0])) {
                 this.state.fileSystem.getFileContents(args[0], (rs: any) => {
@@ -312,20 +226,52 @@ class Terminal extends Component<Props, State> {
                         name: file.name,
                         id: file.id_file,
                     }, data: file.details})
-                    this.setState({programMode: true, programArgs: programArgs})
+
+                    let program = <Vim return={() => this.setState({programMode: false})} save={(data: Arguments) => {
+                        if (data.file.id > 0) {
+                            this.state.fileSystem.saveFileContents(data.file.id, data.data)
+                        } else {
+                            this.state.fileSystem.createFile(data.file.name, data.data)
+                        }
+                        
+                    }} input={programArgs}/>
+
+                    this.setState({programMode: true, program: program})
                 })
             } else {
                 programArgs.push({file:{
                     name: args[0],
                     id: -1,
                 }, data: ""})
-                this.setState({programMode: true, programArgs: programArgs})
+                let program = <Vim return={() => this.setState({programMode: false})} save={(data: Arguments) => {
+                    if (data.file.id > 0) {
+                        this.state.fileSystem.saveFileContents(data.file.id, data.data)
+                    } else {
+                        this.state.fileSystem.createFile(data.file.name, data.data)
+                    }
+                    
+                }} input={programArgs}/>
+                this.setState({programMode: true, program: program})
             }
             
         } else {
-            this.setState({programMode: true, programArgs: programArgs})
+            let program = <Vim return={() => this.setState({programMode: false})} save={(data: Arguments) => {
+                if (data.file.id > 0) {
+                    this.state.fileSystem.saveFileContents(data.file.id, data.data)
+                } else {
+                    this.state.fileSystem.createFile(data.file.name, data.data)
+                }
+                
+            }} input={[]}/>
+            this.setState({programMode: true, program: program})
         }
         
+    }
+
+    skills = (args: string[], print: any) => {
+
+        let program = <Skills return={() => {this.setState({programMode: false, program: null})}}/>
+        this.setState({programMode: true, programArgs: [], program: program})
     }
 
     pageScroll = () => {
@@ -346,6 +292,8 @@ class Terminal extends Component<Props, State> {
 
         this.setState({ screenText }, () => { this.pageScroll() })
     }
+
+
 
     fallBackCommand(command: string, commandParts: string[]) {
         let screenText = this.state.screenText
@@ -408,21 +356,12 @@ class Terminal extends Component<Props, State> {
 
         let adapter = <Screen onInput={this.onInput} currentPath={this.state.fileSystem.currentFolder.fullPath} output={this.state.screenText} getPrevCommand={this.getPrevCommand} color={this.state.color} />
 
-        if (this.state.programMode) {
-            adapter = <Vim return={() => this.setState({programMode: false})} save={(data: Arguments) => {
-                if (data.file.id > 0) {
-                    this.state.fileSystem.saveFileContents(data.file.id, data.data)
-                } else {
-                    this.state.fileSystem.createFile(data.file.name, data.data)
-                }
-                
-            }} input={this.state.programArgs}/>
-        }
 
 
         return <div style={computedStyle}>
+            <div className={`overlay ${this.state.color.name}`}/>
             {this.state.programMode ?
-                adapter
+                this.state.program
                 : <React.Fragment>
                     <Boot finishBoot={this.finnishBoot} alreadyInitialized={!this.state.initializing} />
                     {

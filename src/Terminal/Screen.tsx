@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React from 'react'
 import Prompt from './Prompt'
 import TextHistoric from './TextHistoric'
 import { Color } from './Terminal';

@@ -48,6 +48,10 @@
     background: #FFB000;
     box-shadow: 1px 1px 1px rgba(255,176,0, 0.8), -1px -1px 1px rgba(255,176,0, 0.8), 1px -1px 1px rgba(255,176,0, 0.8), -1px 1px 1px rgba(255,176,0, 0.8);
   }
+  .carret.pink:after {
+    background: #FF1493;
+    box-shadow: 1px 1px 1px rgba(255, 20, 147, 0.8), -1px -1px 1px rgba(255, 20, 147, 0.8), 1px -1px 1px rgba(255, 20, 147, 0.8), -1px 1px 1px rgba(255, 20, 147, 0.8);
+  }
   .carret.green1:after {
     background: #33FF00;
     box-shadow: 1px 1px 1px rgba(51,255,0, 0.8), -1px -1px 1px rgba(51,255,0, 0.8), 1px -1px 1px rgba(51,255,0, 0.8), -1px 1px 1px rgba(51,255,0, 0.8);

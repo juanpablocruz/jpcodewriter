@@ -1,0 +1,31 @@
+.skill-badge {
+    color: #FFB000;
+    padding:0.5em 1em  0.5em 1em ;
+    position: relative;
+}
+
+.skill-badge.conquered span{
+    color: #333;
+    background: #FFB000;
+    padding: 0em 0.6em 0em 0.6em;
+}
+
+.skill-badge.conquered:after,
+.skill-badge.conquered:before {
+    border: 0.1em solid #FFB000;
+    bottom: 0;
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 10px;
+}
+
+.skill-badge.conquered:after {
+    border-left: none;
+    right:0;
+}
+
+.skill-badge.conquered:before {
+    border-right: none;
+    left: 0;
+}

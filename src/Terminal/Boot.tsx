@@ -44,9 +44,7 @@ class Boot extends Component<Props, State> {
                 this.setState({text})
             })
         }
-        
     }
-
 
 
     render() {

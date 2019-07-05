@@ -1,0 +1,6 @@
+.skills-header {
+    display: flex;
+    margin: auto;
+    z-index: 10;
+    position: fixed;
+}

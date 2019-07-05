@@ -2,7 +2,6 @@ import React, { Component } from 'react'
 import './style/Vim.css'
 import Carret from '../Terminal/Carret';
 import Footer from './Footer'
-import { text } from 'figlet';
 import { Arguments } from '../Terminal/Terminal';
 
 interface Props {
@@ -110,7 +109,7 @@ export default class Vim extends Component<Props, State>{
 
         let valid =
             (keycode > 47 && keycode < 58) || // number keys
-            keycode == 32 || keycode == 13 || // spacebar & return key(s) (if you want to allow carriage returns)
+            keycode === 32 || keycode === 13 || // spacebar & return key(s) (if you want to allow carriage returns)
             (keycode > 64 && keycode < 91) || // letter keys
             (keycode > 95 && keycode < 112) || // numpad keys
             (keycode > 185 && keycode < 193) || // ;=,-./` (in order)
@@ -311,9 +310,7 @@ export default class Vim extends Component<Props, State>{
         let board: string[] = []
         let text = this.state.text
         if (text.length > 0) {
-            text.split('\n').map((e) => {
-                board.push(e)
-            })
+            text.split('\n').map((e) => board.push(e))
         }
 
         for (let i = board.length; i < numberOfLines; i++) {
