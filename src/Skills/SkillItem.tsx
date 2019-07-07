@@ -3,15 +3,17 @@ import './styles/SkillItem.css'
 
 export interface Skill {
     name: string
+    percentage: number
+    description: string
+    conquered: boolean
 }
 
 interface Props {
     skill: Skill
-    conquered: boolean,
     color: string
 }
 
 const SkillItem = (props:Props) => {
-    return <div className={`skill-badge ${props.conquered?'conquered':''} ${props.color}`}><span>{props.skill.name}</span></div>
+    return <div className={`skill-badge ${props.skill.conquered?'conquered':''} ${props.color}`}><span>{props.skill.name}</span></div>
 }
 export default SkillItem

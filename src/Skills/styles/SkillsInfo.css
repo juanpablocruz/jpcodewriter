@@ -1,0 +1,105 @@
+.skill-info {
+    position: relative;
+    padding: 1em;
+    cursor: pointer;
+}
+
+.skill-info p {
+    margin: 2px;
+}
+
+.skill-info.amber {
+    color: #FFB000
+}
+
+.skill-info.pink {
+    color: #FF1493
+}
+
+.skill-info.appleGreen {
+    color: #33FF33
+}
+
+.skill-info-progress {
+    height: 1em;
+}
+
+.skill-info-progress.amber {
+    background-color: rgba(255, 176, 0, 0.8);
+}
+
+.skill-info-progress.pink {
+    background-color: rgba(255, 20, 147, 0.8);
+}
+
+.skill-info-progress.appleGreen {
+    background-color: rgba(51, 255, 51, 0.8);
+}
+
+.skill-info-total-progress {
+    width: 100%;
+    background-color: rgba(33, 33, 33, 0.9)
+}
+
+.skill-info.amber:hover:after,
+.skill-info.amber:hover:before {
+    border: 0.1em solid rgba(255, 176, 0, 0.8);
+    bottom: 0;
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 15px;
+    border-width: 0.1em;
+}
+
+.skill-info.amber:hover:after {
+    border-left: none;
+    right: 0;
+}
+
+.skill-info.amber:hover:before {
+    border-right: none;
+    left: 0;
+}
+
+.skill-info.pink:hover:after,
+.skill-info.pink:hover:before {
+    border: 0.1em solid rgba(255, 20, 147, 0.8);
+    bottom: 0;
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 15px;
+    border-width: 0.3em;
+}
+
+.skill-info.pink:hover:after {
+    border-left: none;
+    right: 0;
+}
+
+.skill-info.pink:hover:before {
+    border-right: none;
+    left: 0;
+}
+
+.skill-info.appleGreen:hover:after,
+.skill-info.appleGreen:hover:before {
+    border: 0.1em solid rgba(51, 255, 51, 0.8);
+    bottom: 0;
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 15px;
+    border-width: 0.3em;
+}
+
+.skill-info.appleGreen:hover:after {
+    border-left: none;
+    right: 0;
+}
+
+.skill-info.appleGreen:hover:before {
+    border-right: none;
+    left: 0;
+}

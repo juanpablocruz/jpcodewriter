@@ -3,4 +3,6 @@
     margin: auto;
     z-index: 10;
     position: fixed;
+    flex-wrap: wrap;
+    left: 0;
 }

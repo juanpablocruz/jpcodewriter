@@ -1,10 +1,12 @@
 import React, { Component } from 'react'
 import Screen from './Screen'
 import Boot from './Boot';
-import Filesystem from './FileSystem/Filesystem';
+import Filesystem, { Folder } from './FileSystem/Filesystem';
 import Vim from '../Vim/Vim';
 import "./style/Terminal.css"
 import Skills from '../Skills/Skills';
+import { Expression } from './Math';
+import * as R from 'ramda'
 
 interface Command {
     command: any,
@@ -13,7 +15,6 @@ interface Command {
 }
 
 type Commands = { [key: string]: Command }
-
 
 export interface ColorOffset {
     width: number
@@ -42,7 +43,7 @@ interface Props {
 
 export interface Arguments {
     file: any
-    data: any 
+    data: any
 }
 
 interface State {
@@ -58,12 +59,13 @@ interface State {
     programMode: boolean,
     programArgs: Arguments[]
     program: any
+    historyPointer: number
 }
 
 
-let Ambar: Color = { name: "amber", color: "#FFB000", shadow: { color: "rgba(255,176,0, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
-let Pink: Color = { name: "pink", color: "#FF1493", shadow: { color: "rgba(255, 20, 147, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
-let AppleGreen: Color = { name: "appleGreen", color: "#33FF33", shadow: { color: "rgba(51,255,51, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
+export const Ambar: Color = { name: "amber", color: "#FFB000", shadow: { color: "rgba(255,176,0, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
+export const Pink: Color = { name: "pink", color: "#FF1493", shadow: { color: "rgba(255, 20, 147, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
+export const AppleGreen: Color = { name: "appleGreen", color: "#33FF33", shadow: { color: "rgba(51,255,51, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
 
 class Terminal extends Component<Props, State> {
 
@@ -86,6 +88,7 @@ class Terminal extends Component<Props, State> {
         this.clear = this.clear.bind(this)
         this.onInput = this.onInput.bind(this)
         this.print = this.print.bind(this)
+        this.calc = this.calc.bind(this)
         this.fallBackCommand = this.fallBackCommand.bind(this)
         this.getPrevCommand = this.getPrevCommand.bind(this)
         this.finnishBoot = this.finnishBoot.bind(this)
@@ -104,74 +107,59 @@ class Terminal extends Component<Props, State> {
             vi: { command: this.vi, description: "file editor vi" },
             rm: { command: this.rm, description: "removes file" },
             cat: { command: this.cat, description: "reads a file" },
+            calc: { command: this.calc, description: "evaluate mathematical expresion" },
             skills: { command: this.skills, description: "show the skills" },
-            greenmode: { command: this.greenmode, description: "" },
-            ambarmode: { command: this.ambarmode, description: "" },
-            pinkmode: { command: this.pinkmode, description: "" },
+            greenmode: { command: this.greenmode, description: "Change terminal color to green" },
+            ambarmode: { command: this.ambarmode, description: "Change terminal color to ambar" },
+            pinkmode: { command: this.pinkmode, description: "Change terminal color to pink" },
         }
-
-        /* 
-        let oldLog = window.console.log
-
-             window.console.log = (...args:any) => {
-                 this.print(...args)
-                 oldLog(...args)
-             }
-        */  
 
         this.state = {
             color: color,
             backgroundColor: backgroundColor,
             isMaximized: startState === 'maximized',
             style: style,
-            commands: { ...defaultCommands, ...commands },
+            commands: { ...commands, ...defaultCommands },
             screenText: [{ msg: msg }],
             commandHistory: [],
             initializing: true,
             fileSystem: new Filesystem(),
             programMode: false,
             programArgs: [],
-            program: null
+            program: null,
+            historyPointer: 0
         }
     }
 
     greenmode = () => {
-        this.setState({color: AppleGreen})
+        this.setState({ color: AppleGreen })
     }
     ambarmode = () => {
-        this.setState({color: Ambar})
+        this.setState({ color: Ambar })
     }
     pinkmode = () => {
-        this.setState({color: Pink})
+        this.setState({ color: Pink })
     }
 
     clear = () => {
         this.setState({ screenText: [] })
     }
 
-    cat = (args: string[], print: any) => {
+    cat = async (args: string[], print: any) => {
         if (args.length) {
-            this.state.fileSystem.getFileContents(args[0], (data:any) => {
-                print(data[0].details)
-            })
+            let data: any = await this.state.fileSystem.getFileContents(args[0])
+            print(...data.map((c: any) => c.details))
         }
     }
 
     help = (args: string[], print: any) => {
-        if (args.length === 0) {
-            let helpText = []
-            let commands = this.state.commands
-            for (let command in commands) {
-                let obj: { [key: string]: string } = {}
-                if (commands[command].description.length) {
-                    obj[command] = commands[command].description
-                    helpText.push(obj)
-                }
-            }
-            print(...helpText.map((value) => Object.keys(value)[0] + ":\t" + Object.values(value)[0]))
+        if (!args.length) {
+            let commands = Object.entries(this.state.commands)
+            let withDescription = commands.filter((c: any) => c[1].description.length)
+            let helpText = withDescription.map((e: any) => `${e[0]}:\t${e[1].description}`)
+            print(...helpText)
         } else {
             let command = args[0]
-
             if (this.state.commands.hasOwnProperty(command)) {
                 if (this.state.commands[command].hasOwnProperty("man")) {
                     print(this.state.commands[command].man)
@@ -182,159 +170,195 @@ class Terminal extends Component<Props, State> {
         }
     }
 
-    ls = (args: string[], print: any) => {
-        if (args.length === 0) {
-            print(...this.state.fileSystem.getCurrentFolderContents().map((el: any) => el.name))
+    ls = async (args: string[], print: any) => {
+        if (!args.length) {
+            print(...this.state.fileSystem.getCurrentFolderContents().map((el: Folder) => el.name))
         } else {
-
-            this.state.fileSystem.getFolderContents(args[0], (data: any) => { print(...data.map((el: any) => el.name)) })
+            let data: any = await this.state.fileSystem.getFolderContents(
+                args[0]
+            )
+            print(...data.map((el: Folder) => el.name))
         }
     }
 
     cd = (args: string[], print: any) => {
-        if (args.length > 0) {
+        if (args.length) {
             this.state.fileSystem.changeToFolder(args[0])
         }
     }
 
     mkdir = (args: string[], print: any) => {
-        if (args.length > 0) {
+        if (args.length) {
             this.state.fileSystem.createFolder(args[0])
         }
     }
 
     touch = (args: string[], print: any) => {
-        if (args.length > 0) {
+        if (args.length) {
             this.state.fileSystem.createFile(args[0])
         }
     }
 
     rm = (args: string[], print: any) => {
-        if (args.length > 0) {
+        if (args.length) {
             this.state.fileSystem.removeElement(args[0])
         }
     }
 
-    vi = (args: string[], print: any) => {
-        let programArgs : Arguments[] = []
-        
-        if (args.length > 0) {
-            if (this.state.fileSystem.currentFolderContents.find(e => e.name === args[0])) {
-                this.state.fileSystem.getFileContents(args[0], (rs: any) => {
-                    let file = rs[0]
-                    programArgs.push({file:{
+    vi = async (args: string[], print: any) => {
+        let programArgs: Arguments[] = []
+        const { fileSystem } = this.state
+        const { curry } = R
+
+        const curriedSave = curry((fileSystem: Filesystem, data: Arguments) => {
+            if (data.file.id > 0) {
+                fileSystem.saveFileContents(data.file.id, data.data)
+            } else {
+                fileSystem.createFile(data.file.name, data.data)
+            }
+        })
+        const save = curriedSave(fileSystem)
+        const returnFn = () => this.setState({ programMode: false })
+
+        let initVim = (args: Arguments[]) =>
+            <Vim return={returnFn}
+                save={save}
+                input={args} />
+
+        if (args.length) {
+            if (fileSystem.currentFolderContents.find(e => e.name === args[0])) {
+                let contents: any = await fileSystem.getFileContents(args[0])
+                programArgs = contents.map((file: any) => ({
+                    file: {
                         name: file.name,
                         id: file.id_file,
-                    }, data: file.details})
-
-                    let program = <Vim return={() => this.setState({programMode: false})} save={(data: Arguments) => {
-                        if (data.file.id > 0) {
-                            this.state.fileSystem.saveFileContents(data.file.id, data.data)
-                        } else {
-                            this.state.fileSystem.createFile(data.file.name, data.data)
-                        }
-                        
-                    }} input={programArgs}/>
-
-                    this.setState({programMode: true, program: program})
+                    }, data: file.details
                 })
+                )
             } else {
-                programArgs.push({file:{
-                    name: args[0],
-                    id: -1,
-                }, data: ""})
-                let program = <Vim return={() => this.setState({programMode: false})} save={(data: Arguments) => {
-                    if (data.file.id > 0) {
-                        this.state.fileSystem.saveFileContents(data.file.id, data.data)
-                    } else {
-                        this.state.fileSystem.createFile(data.file.name, data.data)
-                    }
-                    
-                }} input={programArgs}/>
-                this.setState({programMode: true, program: program})
+                programArgs.push({
+                    file: {
+                        name: args[0],
+                        id: -1,
+                    }, data: ""
+                })
             }
-            
-        } else {
-            let program = <Vim return={() => this.setState({programMode: false})} save={(data: Arguments) => {
-                if (data.file.id > 0) {
-                    this.state.fileSystem.saveFileContents(data.file.id, data.data)
-                } else {
-                    this.state.fileSystem.createFile(data.file.name, data.data)
-                }
-                
-            }} input={[]}/>
-            this.setState({programMode: true, program: program})
         }
-        
+        this.setState({ programMode: true, program: initVim(programArgs) })
     }
 
     skills = (args: string[], print: any) => {
+        let program = <Skills
+            return={() => { this.setState({ programMode: false, program: null }) }}
+            color={this.state.color}
+        />
 
-        let program = <Skills return={() => {this.setState({programMode: false, program: null})}} color={this.state.color}/>
-        this.setState({programMode: true, programArgs: [], program: program})
+        this.setState({ programMode: true, programArgs: [], program: program })
+    }
+
+    calc = (args: string[], print: any) => {
+        let expresion = new Expression(args.join(''))
+        try {
+            let result = (expresion.resolve())
+            if (result) {
+                print(result)
+            }
+        } catch (err) { console.log(err) }
     }
 
     pageScroll = () => {
         if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
             clearTimeout(this.scrolldelay)
         } else {
-            window.scrollBy(0, 1)
+            window.scrollBy(0, 2)
             this.scrolldelay = setTimeout(this.pageScroll, 0.05)
         }
     }
 
-    print(...args: string[]) {
-        let screenText = this.state.screenText
-
-        for (let arg of args) {
-            screenText.push({ msg: arg, type: "output" })
-        }
-
+    print = (buffer: any) => (...args: string[]) => {
+        const screenText = args.reduce((prev, el) => prev.concat({ msg: el, type: "output" }), buffer)
         this.setState({ screenText }, () => { this.pageScroll() })
     }
 
-
-
-    fallBackCommand(command: string, commandParts: string[]) {
-        let screenText = this.state.screenText
+    fallBackCommand(command: string) {
         if (command.length) {
-            screenText.push({ msg: `Unrecognized command '${command}'`, type: "output" })
+            const screenText = this.state.screenText.concat({
+                msg: `Unrecognized command '${command}'`,
+                type: "output"
+            })
+            this.setState({ screenText }, () => { this.pageScroll() })
         }
+        return command
+    }
 
-        this.setState({ screenText }, () => { this.pageScroll() })
+    head = (arr: any) => arr[0]
+    tail = (arr: any) => arr[arr.length - 1]
+    trace = (label: string) => (inpt: any) => { console.log(label, inpt); return inpt }
+
+    getCurrentFolderPath = () => this.state.fileSystem.currentFolder.fullPath
+
+    appendCommandToHistory = (command: any) => {
+        return this.tail(this.state.commandHistory) === command
+            ? this.state.commandHistory
+            : this.state.commandHistory.concat(command)
     }
 
     onInput = (text: string) => {
-        let commandParts = text.split(" ")
-        let command: string = commandParts[0]
-        let stateCommands: { [key: string]: any } = this.state.commands
-        let args: string[] = commandParts.slice(1)
+        const { commands: stateCommands,
+            screenText: stateScreenText
+        } = this.state
+        const { pipe, curry } = R
+        const getCommandParts = (text: string) => text.split(" ")
+        const getFirstCommand = (text: string) => this.head(getCommandParts(text))
+        const getRestArgs = (text: string) => getCommandParts(text).slice(1)
 
-        let screenText = this.state.screenText
-        screenText.push({ msg: text, path: this.state.fileSystem.currentFolder.fullPath })
-        this.setState({ screenText })
+        const executeCommand = curry((commandList: any, args: any, print: any, command: string) => {
+            commandList.hasOwnProperty(command)
+                ? commandList[command].command(args, print)
+                : this.fallBackCommand(command)
+            return [command].concat(args).join(" ")
+        })
 
-        if (stateCommands.hasOwnProperty(command)) {
-            let commandHistory = this.state.commandHistory
-            commandHistory.push(command)
-            this.setState({ commandHistory })
-            stateCommands[command].command(args, this.print)
-        } else {
-            this.fallBackCommand(command, commandParts)
-        }
+        const screenText = stateScreenText.concat({
+            msg: text,
+            path: this.getCurrentFolderPath()
+        })
+        const execCommandCurried = executeCommand(stateCommands,
+            getRestArgs(text),
+            this.print(screenText)
+        )
+        const processCommand = pipe(
+            getFirstCommand,
+            execCommandCurried,
+            this.appendCommandToHistory
+        )
+
+        const commandHistory = processCommand(text)
+        this.setState({ commandHistory, historyPointer:0 })
     }
 
-    *getPrevCommand() {
-        for (let i = this.state.commandHistory.length - 1; i >= 0; i--) {
-            yield this.state.commandHistory[i]
-        }
+    getPrevCommand() {
+        const inc = (history:string[]) => (
+            (historyPointer:number) => (
+                historyPointer < history.length ? historyPointer+1 : historyPointer
+            )
+        )
+        const getCurrentCommand = (history:string[]) => (pointer: number) => (
+            history[pointer]
+        )
+        
+        const incHistory = inc(this.state.commandHistory)
+        const getCurrentCommandWithHistoric = getCurrentCommand(this.state.commandHistory)
+
+        const historyPointer = incHistory(this.state.historyPointer)
+        const command = getCurrentCommandWithHistoric(historyPointer)
+        this.setState({historyPointer})
+        return command
     }
 
     finnishBoot() {
         this.setState({ initializing: false })
     }
-
-
 
     render() {
         let computedStyle = {
@@ -354,18 +378,21 @@ class Terminal extends Component<Props, State> {
             computedStyle = { ...computedStyle, ...{ width: '100%', height: '100%' } }
         }
 
-        let adapter = <Screen onInput={this.onInput} currentPath={this.state.fileSystem.currentFolder.fullPath} output={this.state.screenText} getPrevCommand={this.getPrevCommand} color={this.state.color} />
-
-
-
         return <div style={computedStyle}>
-            <div className={`overlay ${this.state.color.name}`}/>
+            <div className={`overlay ${this.state.color.name}`} />
             {this.state.programMode ?
                 this.state.program
                 : <React.Fragment>
                     <Boot finishBoot={this.finnishBoot} alreadyInitialized={!this.state.initializing} />
                     {
-                        !this.state.initializing ? adapter : null
+                        !this.state.initializing
+                            ? <Screen onInput={this.onInput}
+                                currentPath={this.getCurrentFolderPath()}
+                                output={this.state.screenText}
+                                getPrevCommand={this.getPrevCommand}
+                                color={this.state.color}
+                            />
+                            : null
                     }
                 </React.Fragment>
             }

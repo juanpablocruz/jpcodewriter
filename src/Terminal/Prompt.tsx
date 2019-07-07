@@ -49,6 +49,7 @@ class Prompt extends Component<Props, State> {
                 break
             default:
                 let keycode = event.keyCode
+                
                 var valid =
                     (keycode > 47 && keycode < 58) || // number keys
                     keycode === 32 || keycode === 13 || // spacebar & return key(s) (if you want to allow carriage returns)
@@ -58,7 +59,9 @@ class Prompt extends Component<Props, State> {
                     (keycode > 218 && keycode < 223)   // [\]' (in order)
 
                 if (valid) {
-                    text = this.state.text + event.key
+                    let key = event.key
+                    if (key === 'Dead') {key = '^'}
+                    text = this.state.text +key
                     hasModified = true
                 } else {
                     if (keycode === 38) {// UP

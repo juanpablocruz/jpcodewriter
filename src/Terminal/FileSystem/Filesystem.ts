@@ -7,6 +7,10 @@ export interface Folder {
     name: string
     type: string
 }
+interface FolderHolder {
+    current: Folder
+    contents: Folder[]
+}
 
 export default class Filesystem {
     version: string
@@ -30,41 +34,56 @@ export default class Filesystem {
             console.error("no instance")
         }
 
+        
         this.currentFolder = { id: 2, fullPath: "/usr/home", name: "home", type: "folder", id_parent: 1 }
         this.currentFolderContents = []
 
-        this.getFolder(this.currentFolder.id, (data: Folder[]) => this.currentFolderContents = this.appendCurrentAndParentFolder(data))
+        this.getInitialFolder()
+
+        
+    }
+
+    async getInitialFolder() {
+        let folder:any = await this.getFolder(this.currentFolder.id)
+
+        this.currentFolder = folder.current
+        this.currentFolderContents = this.appendCurrentAndParentFolder(folder.contents)
     }
 
     insertIfNotExists(data: any, tran: any) {
         return new Promise((resolve, reject) => {
             tran.executeSql("SELECT * FROM FileSystem WHERE id_parent=? and full_path=? and name=? and type=?", data, (tx: any, rs: any) => {
-            if (!rs.rows.length) {
-                tran.executeSql('insert into FileSystem (id_parent, full_path, name, type) values (?, ?, ?, ?) ', data, (tx: any, rs: any) => {
-                    if (resolve)
-                        resolve(rs.insertId)
-                })
-            }
+                if (!rs.rows.length) {
+                    tran.executeSql('insert into FileSystem (id_parent, full_path, name, type) values (?, ?, ?, ?) ', data, (tx: any, rs: any) => {
+                        if (resolve)
+                            resolve(rs.insertId)
+                    })
+                }
             })
         })
     }
 
-    createFolder(folderName: string) {
-        this.dbInstance.transaction((tran: any) => {
+     createFolder(folderName: string) {
+        this.dbInstance.transaction(async(tran: any) => {
             let data = [this.currentFolder.id, this.currentFolder.fullPath + "/" + folderName, folderName, "folder"]
             this.insertIfNotExists(data, tran)
-            this.getFolder(this.currentFolder.id, (data: Folder[]) => this.currentFolderContents = this.appendCurrentAndParentFolder(data))
+            let folder:any = await this.getFolder(this.currentFolder.id)
+            let holder = folder as FolderHolder
+            this.currentFolder = holder.current
+            this.currentFolderContents = this.appendCurrentAndParentFolder(holder.contents)
         })
     }
 
-    createFile(fileName: string, contents ?:string) {
+    createFile(fileName: string, contents?: string) {
         this.dbInstance.transaction(async (tran: any) => {
             let data = [this.currentFolder.id, this.currentFolder.fullPath + "/" + fileName, fileName, "file"]
             let id = await this.insertIfNotExists(data, tran)
 
-            tran.executeSql("INSERT INTO FileSystem_details (id_file, details) VALUES (?, ?)", [id, contents ? contents: ""])
+            tran.executeSql("INSERT INTO FileSystem_details (id_file, details) VALUES (?, ?)", [id, contents ? contents : ""])
 
-            this.getFolder(this.currentFolder.id, (data: Folder[]) => this.currentFolderContents = this.appendCurrentAndParentFolder(data))
+            let folder:any= await this.getFolder(this.currentFolder.id)
+            this.currentFolder = folder.current
+            this.currentFolderContents = this.appendCurrentAndParentFolder(folder.contents)
         })
     }
 
@@ -72,70 +91,113 @@ export default class Filesystem {
         return this.currentFolderContents
     }
 
-    getFileContents(file: string, callback: any) {
-        this.dbInstance.transaction((tran: any) => {
-            tran.executeSql("SELECT d.rowid, d.*, f.* FROM FileSystem_details d INNER JOIN FileSystem f ON d.id_file = f.rowid WHERE f.name = ?", [file], (tx: any, rs: any) => {
-                if (rs.rows.length) {
-                    callback(rs.rows)
-                }
+    getFileContents(file: string) {
+        return new Promise(resolve => {
+            this.dbInstance.transaction((tran: any) => {
+                tran.executeSql("SELECT d.rowid, d.*, f.* FROM FileSystem_details d INNER JOIN FileSystem f ON d.id_file = f.rowid WHERE f.name = ?", [file], (tx: any, rs: any) => {
+                    if (rs.rows.length) {
+                        resolve(Array.from(rs.rows))
+                    }
+                })
             })
         })
     }
 
     removeElement(fileName: string) {
-        let fullPath = this.currentFolder.fullPath + "/" + fileName
-        this.dbInstance.transaction((tran: any) => {
-            tran.executeSql("SELECT rowid, * FROM FileSystem WHERE full_path = ?", [fullPath] , (tx:any, rs:any) => {
-                if (rs.rows.length) {
-                    tran.executeSql("DELETE FROM FileSystem WHERE full_path=?", [fullPath], (tx:any, rs:any) => {
-                        this.getFolder(this.currentFolder.id, (data: Folder[]) => {
-                            this.currentFolderContents = this.appendCurrentAndParentFolder(data)
-                        })
-                    }, (tx:any, err: any) => console.log(err))
-                    if (rs.rows[0].type === "file") {
-                        tran.executeSql("DELETE FROM FileSystem_details WHERE id_file=?", [rs.rows[0].rowid], (tx:any, rs: any) => {}, (tx:any, err: any) => console.log(err))
-                    }
-                    
+        return new Promise(async (resolve, reject) => {
+            let fullPath = this.currentFolder.fullPath + "/" + fileName
+            this.dbInstance.transaction(async (tran: any) => {
+                let doesExist = async (fullPath: string, tran: any) => {
+                    return new Promise((resolve, reject) => {
+                        tran.executeSql("SELECT rowid, * FROM FileSystem WHERE full_path = ?",
+                            [fullPath],
+                            (tx: any, rs: any) => {
+                                resolve(rs.rows)
+                            })
+                    })
                 }
-            }, (tx:any, err: any) => console.log(err))
-            
-        })
-    }
+                let exist: any = await doesExist(fileName, tran)
+                if (exist.length) {
+                    let deleteFile = async (fullPath: string, tran: any) => {
+                        return new Promise((resolve, reject) => {
+                            tran.executeSql("DELETE FROM FileSystem WHERE full_path=?",
+                                [fullPath],
+                                (tx: any, rs: any) => {
+                                    resolve(rs)
+                                }, (tx: any, err: any) => reject(err))
+                        })
+                    }
 
-    saveFileContents(id: number, contents: string) {
-        this.dbInstance.transaction((tran: any) => {
-            tran.executeSql("UPDATE FileSystem_details set details = ? WHERE id_file=?", [contents, id])
-        })
-    }
+                    await deleteFile(fullPath, tran)
+                    let folder:any = await this.getFolder(this.currentFolder.id)
+                    this.currentFolder = folder.current
+                    this.currentFolderContents = this.appendCurrentAndParentFolder(folder.contents)
+                    
 
-    getFolderContents(folder: string, callback: any) {
-        this.dbInstance.transaction((tran: any) => {
+                    if (exist[0].type === "file") {
+                        let deleteFileDetails = async (rowId: number, tran: any) => {
+                            return new Promise((resolve, reject) => {
+                                tran.executeSql("DELETE FROM FileSystem_details WHERE id_file=?",
+                                    [rowId],
+                                    (tx: any, rs: any) => { resolve() },
+                                    (tx: any, err: any) => reject(err))
+                            })
+                        }
+                        await deleteFileDetails(exist[0].rowid, tran)
+                    }
 
-            let query = "SELECT fs.rowid,fs.* FROM FileSystem fs inner join FileSystem fs2 on fs.id_parent = fs2.rowid where "
-            let args: string | number | undefined = ""
-            if (folder === '.') {
-                query = `${query} fs2.id_parent=?`
-                args = this.currentFolder.id
-            } else if (folder === '..') {
-                query = `${query} fs2.id_parent=?`
-                args = this.currentFolder.id_parent
-            } else if (folder.split("/").length > 1) {
-                query = `${query} fs2.full_path=?`
-                args = folder
-            } else {
-                query = `${query} fs2.name=?`
-                args = folder
-            }
-            tran.executeSql(query, [args], (tx: any, rs: any) => {
-                if (rs.rows.length) {
-                    callback(this.mapToFolder(rs.rows))
-                } else {
-                    callback([])
+                    resolve()
                 }
 
             })
-
         })
+
+    }
+
+    saveFileContents(id: number, contents: string) {
+        return new Promise((resolve, reject) => {
+            this.dbInstance.transaction((tran: any) => {
+                tran.executeSql("UPDATE FileSystem_details set details = ? WHERE id_file=?",
+                    [contents, id],
+                    (tx: any, rs: any) => resolve(rs),
+                    (tx: any, err: any) => reject(err)
+                )
+            })
+        })
+
+    }
+
+    getFolderContents(folder: string) {
+        return new Promise(resolve => {
+            this.dbInstance.transaction((tran: any) => {
+
+                let query = "SELECT fs.rowid,fs.* FROM FileSystem fs inner join FileSystem fs2 on fs.id_parent = fs2.rowid where "
+                let args: string | number | undefined = ""
+                if (folder === '.') {
+                    query = `${query} fs2.id_parent=?`
+                    args = this.currentFolder.id
+                } else if (folder === '..') {
+                    query = `${query} fs2.id_parent=?`
+                    args = this.currentFolder.id_parent
+                } else if (folder.split("/").length > 1) {
+                    query = `${query} fs2.full_path=?`
+                    args = folder
+                } else {
+                    query = `${query} fs2.name=?`
+                    args = folder
+                }
+                tran.executeSql(query, [args], (tx: any, rs: any) => {
+                    if (rs.rows.length) {
+                        resolve(this.mapToFolder(rs.rows))
+                    } else {
+                        resolve([])
+                    }
+
+                })
+
+            })
+        })
+
     }
 
     mapToFolder(data: any) {
@@ -157,7 +219,7 @@ export default class Filesystem {
         return newData
     }
 
-    changeToFolder(folderName: string) {
+    async changeToFolder(folderName: string) {
         let folderExists = false
         let foundFolder: Folder = { id: 0, fullPath: "", name: "", type: "" }
         for (let folder of this.currentFolderContents) {
@@ -175,28 +237,48 @@ export default class Filesystem {
 
         if (folderExists && foundFolder) {
             this.currentFolder = foundFolder
-            this.getFolder(this.currentFolder.id, (data: Folder[]) => {
-                this.currentFolderContents = this.appendCurrentAndParentFolder(data)
-            })
+            let folder:any = await this.getFolder(this.currentFolder.id)
+            let holder = folder as FolderHolder
+            this.currentFolder = holder.current
+            this.currentFolderContents = this.appendCurrentAndParentFolder(holder.contents)
         }
     }
 
-    getFolder(id: number, callback?: any) {
-        this.dbInstance.transaction((tran: any) => {
-            tran.executeSql("SELECT rowid, * FROM FileSystem WHERE rowid=?", [id], (tx: any, rs: any) => {
-                if (rs.rows.length) {
-                    this.currentFolder = this.mapToFolder(rs.rows)[0]
+    getFolder(id: number) {
+        return new Promise((resolve, reject) => {
+            this.dbInstance.transaction(async (tran: any) => {
+                let fetchFolder = async (id: number, tran: any) => {
+                    return new Promise((resolve, reject) => {
+                        tran.executeSql("SELECT rowid, * FROM FileSystem WHERE rowid=?", [id], (tx: any, rs: any) => {
+                            if (rs.rows.length) {
+                                resolve(this.mapToFolder(rs.rows)[0])
+                            }
+                        })
+                    }
+                    )
                 }
-            })
-            tran.executeSql("SELECT rowid,* FROM FileSystem WHERE id_parent=?", [id], (tx: any, rs: any) => {
-                if (rs.rows.length) {
-                    callback(this.mapToFolder(rs.rows))
-                } else {
-                    callback([])
+
+                let fetchFolderContents = async (id:number, tran: any) => {
+                    return new Promise((resolve, reject) => {
+                        tran.executeSql("SELECT rowid,* FROM FileSystem WHERE id_parent=?", [id], (tx: any, rs: any) => {
+                            if (rs.rows.length) {
+                                resolve(this.mapToFolder(rs.rows))
+                            } else {
+                                resolve([])
+                            }
+        
+                        })
+                    })
                 }
+
+                let current = await fetchFolder(id, tran)
+                let folderContents = await fetchFolderContents(id,tran)
+
+                resolve({current: current, contents: folderContents})
 
             })
         })
+
     }
 
 }

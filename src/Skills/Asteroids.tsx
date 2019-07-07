@@ -6,10 +6,11 @@ import { Color } from '../Terminal/Terminal';
 
 
 interface Props {
-    skills: string[],
+    skills: Skill[],
     skillConquered: any
     return: any
     color: Color
+    showInfo: any
 }
 
 interface State {
@@ -34,7 +35,8 @@ class Asteroids extends Component<Props, State> {
                                 this.props.skills, 
                                 this.props.color,
                                 this.props.skillConquered, 
-                                this.props.return, (requestId: any) => { this.setState({ requestId }) })
+                                this.props.return, (requestId: any) => { this.setState({ requestId }) },
+                                this.props.showInfo)
             game.onResize()
             game.loop()
 

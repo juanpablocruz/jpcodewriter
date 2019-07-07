@@ -23,12 +23,7 @@
     position: absolute;
     top: 0;
     width: 10px;
-}
-
-.skill-badge.amber.conquered span{
-    color: #333;
-    background: #FFB000;
-    padding: 0em 0.6em 0em 0.6em;
+    height: 2em;
 }
 .skill-badge.amber.conquered:after {
     border-left: none;
@@ -38,6 +33,11 @@
 .skill-badge.amber.conquered:before {
     border-right: none;
     left: 0;
+}
+.skill-badge.amber.conquered span{
+    color: #333;
+    background: #FFB000;
+    padding: 0em 0.6em 0em 0.6em;
 }
 
 
@@ -53,12 +53,9 @@
     position: absolute;
     top: 0;
     width: 10px;
+    height: 2em;
 }
-.skill-badge.pink.conquered span{
-    color: #333;
-    background: #FF1493;
-    padding: 0em 0.6em 0em 0.6em;
-}
+
 .skill-badge.pink.conquered:after {
     border-left: none;
     right:0;
@@ -67,6 +64,11 @@
 .skill-badge.pink.conquered:before {
     border-right: none;
     left: 0;
+}
+.skill-badge.pink.conquered span{
+    color: #333;
+    background: #FF1493;
+    padding: 0em 0.6em 0em 0.6em;
 }
 
 
@@ -82,13 +84,8 @@
     position: absolute;
     top: 0;
     width: 10px;
+    height: 2em;
 }
-.skill-badge.appleGreen.conquered span{
-    color: #333;
-    background: #33FF33;
-    padding: 0em 0.6em 0em 0.6em;
-}
-
 .skill-badge.appleGreen.conquered:after {
     border-left: none;
     right:0;
@@ -97,4 +94,9 @@
 .skill-badge.appleGreen.conquered:before {
     border-right: none;
     left: 0;
+}
+.skill-badge.appleGreen.conquered span{
+    color: #333;
+    background: #33FF33;
+    padding: 0em 0.6em 0em 0.6em;
 }

@@ -3,6 +3,7 @@ import './style/Vim.css'
 import Carret from '../Terminal/Carret';
 import Footer from './Footer'
 import { Arguments } from '../Terminal/Terminal';
+import { pipe } from 'ramda';
 
 interface Props {
     return: any
@@ -34,6 +35,8 @@ interface State {
 
 export default class Vim extends Component<Props, State>{
     tabSize: number
+    getFromStart: any
+
     constructor(props: Props) {
         super(props)
 
@@ -45,12 +48,11 @@ export default class Vim extends Component<Props, State>{
         this.tabSize = 4
         window.addEventListener("keydown", this.handleInput)
 
-
         let text = ""
         let file = null
         if (props.input && props.input.length) {
             let inputFile = props.input[0]
-            text = inputFile.data && inputFile.data.length ? inputFile.data : "" 
+            text = inputFile.data && inputFile.data.length ? inputFile.data : ""
             file = inputFile.file
         }
         this.state = {
@@ -61,7 +63,8 @@ export default class Vim extends Component<Props, State>{
             currentCol: 0,
             commandText: []
         }
-        
+
+        this.getFromStart = this.getLineFrom(0)
     }
 
     componentWillUnmount() {
@@ -73,25 +76,23 @@ export default class Vim extends Component<Props, State>{
     }
 
     handleMovementKeys(direction: CarretMovement) {
+        let { currentCol, currentLine, text } = this.state
         if (direction === CarretMovement.RIGHT) {
-            this.setState({ currentCol: this.state.currentCol + 1 })
+            currentCol += 1
         } else if (direction === CarretMovement.LEFT) {
-            this.setState({ currentCol: this.state.currentCol - 1 })
+            currentCol -= 1
         } else if (direction === CarretMovement.DOWN) {
-            let currentLine = this.state.currentLine
-            let textLines = this.state.text.split('\n').length - 1
+            let textLines = text.split('\n').length - 1
             if (currentLine < textLines) {
                 currentLine++
-                this.setState({ currentLine })
             }
         } else if (direction === CarretMovement.UP) {
-            let currentLine = this.state.currentLine
             if (currentLine > 0) {
                 currentLine--
-                let currentCol = this.state.text.split("\n")[currentLine].length - 1
-                this.setState({ currentLine: currentLine, currentCol: currentCol })
+                currentCol = text.split("\n")[currentLine].length - 1
             }
         }
+        return { currentLine, currentCol }
     }
 
     insertKey(key: string) {
@@ -114,157 +115,187 @@ export default class Vim extends Component<Props, State>{
             (keycode > 95 && keycode < 112) || // numpad keys
             (keycode > 185 && keycode < 193) || // ;=,-./` (in order)
             (keycode > 218 && keycode < 227);   // [\]' (in order)
-        let text = this.state.text
+        let { text, currentCol, currentLine } = this.state
+        let newPosition = { currentCol, currentLine }
         if (event.key === "Enter") {
-            let newText = this.insertKey('\n')
-            this.setState({ text: newText, currentLine: this.state.currentLine + 1, currentCol: 0 })
+            text = this.insertKey('\n')
+            newPosition = { currentCol: 0, currentLine: currentLine + 1 }
         } else if (event.code === "Tab") {
-            this.setState({ text: text + '\t', currentCol: this.state.currentCol + this.tabSize })
+            text = text + '\t'
+            newPosition.currentCol = currentCol + this.tabSize
         } else if (event.code === "Backspace") {
             text = text.slice(0, -1)
-            this.setState({ text: text, currentCol: this.state.currentCol + 1 })
+            newPosition.currentCol = currentCol + 1
         } else if (event.code === "ArrowRight") {
-            this.handleMovementKeys(CarretMovement.RIGHT)
+            newPosition = this.handleMovementKeys(CarretMovement.RIGHT)
         } else if (event.code === "ArrowLeft") {
-            this.handleMovementKeys(CarretMovement.LEFT)
+            newPosition = this.handleMovementKeys(CarretMovement.LEFT)
         } else if (event.code === "ArrowDown") {
-            this.handleMovementKeys(CarretMovement.DOWN)
+            newPosition = this.handleMovementKeys(CarretMovement.DOWN)
         } else if (event.code === "ArrowUp") {
-            this.handleMovementKeys(CarretMovement.UP)
+            newPosition = this.handleMovementKeys(CarretMovement.UP)
         }
         else if (valid) {
-            let newText = this.insertKey(event.key)
-            this.setState({ text: newText, currentCol: this.state.currentCol + 1 })
+            text = this.insertKey(event.key)
+            newPosition.currentCol = currentCol + 1
         } else {
             console.log(event)
         }
+        this.setState({ ...newPosition, text })
     }
 
-    deleteChars(command: string, modifiers: string) {
+    getLineFrom = (from: number) => (dest: number) => (sentence: string) => sentence.slice(from, dest)
+    getFromNUntilEnd = (n: number) => (sentence: string) => sentence.slice(n, sentence.length)
+    splitText = (text: string) => text.split('\n')
+    getCurrentLine = (text: string) => (
+        (currentLine: number) => this.splitText(text)[currentLine]
+    )
+    replaceAndJoin = (text: string) => (
+        (currentLine: number) => (newText: string) => {
+            let splitted = this.splitText(text)
+            splitted[currentLine] = newText
+            return splitted.join('\n')
+        }
+    )
+
+    deleteChars = (modifiers:string) => (command:string) => {
         let delNChars = 1
         if (modifiers.length) {
             if (!Number.isNaN(Number(modifiers))) {
                 delNChars = Number(modifiers)
             }
         }
-        let splittedText = this.state.text.split('\n')
-        let currentLine = splittedText[this.state.currentLine]
-        let newCol = this.state.currentCol
+        const { text, currentCol, currentLine } = this.state
+
+        const getCurrentLineOfText = this.getCurrentLine(text)
+        let cursorLine = getCurrentLineOfText(currentLine)
+
+        let newCol = currentCol
+
+        const getLineUntilCursor = this.getFromStart(currentCol)
+        const getLineUntilEnd = this.getFromNUntilEnd(currentCol)
+
         if (command === "x") {
-            splittedText[this.state.currentLine] = currentLine.substr(0, this.state.currentCol) + currentLine.substr(this.state.currentCol + delNChars, currentLine.length)
+            let getNewText = (str: string) => (
+                getLineUntilCursor(str) +
+                this.getFromNUntilEnd(currentCol + delNChars)(str)
+            )
+            cursorLine = getNewText(cursorLine)
         } else if (command === "X") {
-            splittedText[this.state.currentLine] = currentLine.substr(0, this.state.currentCol - delNChars) + currentLine.substr(this.state.currentCol, currentLine.length)
-            if (this.state.currentCol > splittedText[this.state.currentLine].length - 1) {
-                newCol = splittedText[this.state.currentLine].length - 1
+            let getNewText = (str: string) => (
+                this.getFromStart(currentCol - delNChars)(str) +
+                getLineUntilEnd(str)
+            )
+            cursorLine = getNewText(cursorLine)
+            if (currentCol > cursorLine.length - 1) {
+                newCol = cursorLine.length - 1
             }
         }
-        let newText = splittedText.join('\n')
-        this.setState({ text: newText, currentCol: newCol })
+
+        let newText = this.replaceAndJoin(text)(currentLine)(cursorLine)
+        return { text: newText, currentCol: newCol }
     }
 
     deleteWord(modifiers: number) {
-        let splittedText = this.state.text.split('\n')
-        let currentLine = splittedText[this.state.currentLine]
+        const { currentLine, text, currentCol } = this.state
 
-        let newText = currentLine.slice(0, this.state.currentCol)
-        let trimmedText = currentLine.slice(this.state.currentCol, currentLine.length)
-        let words = trimmedText.split(" ")
-        for (let i = 0; i < modifiers; i++) {
-            words.shift()
-        }
-        newText += words.join(" ")
-        splittedText[this.state.currentLine] = newText
+        const getCurrentLineOfText = this.getCurrentLine(text)
+        let cursorLine = getCurrentLineOfText(currentLine)
 
-        this.setState({ text: splittedText.join('\n') })
+        const getLineUntilCursor = this.getFromStart(currentCol)
+        const getLineUntilEnd = this.getFromNUntilEnd(currentCol)
+
+        let shiftAndJoin = (modifiers: number) =>
+            (words: string) => words.split(" ").slice(modifiers, words.length).join(" ")
+        let shiftAndJoinModifiers = shiftAndJoin(modifiers)
+
+        let getLastPart = pipe(getLineUntilEnd, shiftAndJoinModifiers)
+        let getNewText = (str: string) => (getLineUntilCursor(str) + getLastPart(str))
+
+        let newText = this.replaceAndJoin(text)(currentLine)(getNewText(cursorLine))
+        return newText
     }
 
     performCommands(commandText: string[]): boolean {
-        let commandPerformed = false
         let ommitKeys = ["Shift", "CapsLock", "Control", "Enter"]
         let modifiers = ""
-        for (let i = 0; i < commandText.length; i++) {
-            switch (commandText[i]) {
+        const { text, currentLine, currentCol } = this.state
+        const getCurrentLineOfText = this.getCurrentLine(text)
+        const cursorLine = getCurrentLineOfText(currentLine)
+
+        let newState = commandText.reduce((prevState: any, command: string) => {
+            let newState = {}
+            switch (command) {
                 case "i":
-                    commandPerformed = true
-                    this.setState({ mode: Mode.Insert })
+                    newState = { mode: Mode.Insert }
                     break;
                 case "h": // left
-                    commandPerformed = true
-                    this.handleMovementKeys(CarretMovement.LEFT)
+                    newState = this.handleMovementKeys(CarretMovement.LEFT)
                     break
                 case "j": // down
-                    commandPerformed = true
-                    this.handleMovementKeys(CarretMovement.DOWN)
+                    newState = this.handleMovementKeys(CarretMovement.DOWN)
                     break
                 case "k": // up
-                    commandPerformed = true
-                    this.handleMovementKeys(CarretMovement.UP)
+                    newState = this.handleMovementKeys(CarretMovement.UP)
                     break
                 case "l": // right
-                    commandPerformed = true
-                    this.handleMovementKeys(CarretMovement.RIGHT)
+                    newState = this.handleMovementKeys(CarretMovement.RIGHT)
                     break
                 case "Enter": // save and quit
                     if (modifiers.length) {
                         if (modifiers === "zz") {
-                            this.props.save({file: this.state.file, data: this.state.text})
+                            this.props.save({ file: this.state.file, data: this.state.text })
                             this.props.return()
                         } else if (modifiers === ":q!") {
                             this.props.return()
                         } else if (modifiers === ":w") {
-                            this.props.save({file: this.state.file, data: this.state.text})
+                            this.props.save({ file: this.state.file, data: this.state.text })
                         }
                     }
                     break;
                 case "d":
-                    if (modifiers.length) {
-                        modifiers += commandText[i]
-                    } else {
-                        modifiers += commandText[i]
-                    }
+                    modifiers += command
                     break
                 case "w":
                     if (modifiers.length && modifiers.charAt(modifiers.length - 1) === "d") {
-                        commandPerformed = true
                         let newModifiers = modifiers.slice(0, modifiers.length - 1)
                         let deleteModifier = 1
                         if (newModifiers.length) {
                             if (!Number.isNaN(Number(newModifiers))) {
                                 deleteModifier = Number(newModifiers)
                             }
-                        }
-                        this.deleteWord(deleteModifier)
-                    } else {
-
-                    }
+                        } 
+                        newState = {text:this.deleteWord(deleteModifier)}
+                    } 
                     break
                 case "D":
-                    commandPerformed = true
-                    let splittedText = this.state.text.split('\n')
-                    let currentLine = splittedText[this.state.currentLine]
-
-                    splittedText[this.state.currentLine] = currentLine.substr(0, this.state.currentCol)
-
-                    let newText = splittedText.join('\n')
-                    this.setState({ text: newText })
+                    const getLineUntilCursor = this.getFromStart(currentCol)
+                    const replaceAndJoinText = this.replaceAndJoin(text)(currentLine)
+                    const getNewText = pipe(
+                        getLineUntilCursor as (str: string) => string,
+                        replaceAndJoinText
+                    )
+                    newState = { text: getNewText(cursorLine) }
                     break
                 case "x":
                 case "X":
-                    commandPerformed = true
-                    this.deleteChars(commandText[i], modifiers)
+                    const deleteCharsWithModifiers = this.deleteChars(modifiers)
+                    newState = deleteCharsWithModifiers(command)
                     break
                 default:
-                    if (!ommitKeys.includes(commandText[i]))
-                        modifiers += commandText[i]
+                    if (!ommitKeys.includes(command))
+                        modifiers += command
                     break
             }
-        }
+            return Object.assign(prevState, newState)
+        }, {})
 
-        return commandPerformed
+        this.setState({...newState})
+        return Object.keys(newState).length > 0
     }
 
     processCommandModeInput(event: KeyboardEvent) {
-        let commandText = this.state.commandText
+        let {commandText} = this.state
         switch (event.code) {
             case "ArrowUp":
                 commandText.push("k")

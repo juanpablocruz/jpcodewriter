@@ -78,7 +78,7 @@ export class Particle{
     }
 
     static create() {
-        return new Particle;
+        return new Particle();
     }
 
     update() {
@@ -114,7 +114,7 @@ export class Bullet{
     }
 
     static create() {
-        return new Bullet;
+        return new Bullet();
     }
 
     update() {
@@ -152,7 +152,7 @@ export class Asteroid{
     }
 
     static create() {
-        return new Asteroid;
+        return new Asteroid();
     }
 
     update() {

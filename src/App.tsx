@@ -1,7 +1,6 @@
 import React from 'react';
 import './App.css';
 import Terminal from './Terminal/Terminal';
-import Skills from './Skills/Skills';
 
 const about = (args: string[], print: any) => print("HI, MY NAME IS JUAN PABLO",
   "IM NOT VERY GOOD ON TALKING ABOUT MYSELF SO I DECIDED TO CREATE",
@@ -47,7 +46,7 @@ const contact = (args: string[], print: any) => {
   }
 }
 
-const work = (args: string[], print:any) => {
+const work = (args: string[], print: any) => {
   let work = [
     'Software architect at DIGI - (jan 2018 - current ) ',
     'Design and implementation of the architecture of new web applications,',
@@ -80,7 +79,7 @@ const work = (args: string[], print:any) => {
     'Tools and technologies used: Photoshop, illustrator, inDesign, php, javascript,',
     'html5, html, css3, jQuery, mysql.',
     '',]
-    print(...work)
+  print(...work)
 }
 
 const studies = (args: string[], print: any) => {
@@ -90,19 +89,19 @@ const studies = (args: string[], print: any) => {
     '',
     'IES Virgen de la Paloma - (2012 - 2013)',
     'Multiplatform apps development',]
-    print (...studies)
+  print(...studies)
 }
 
 const commands = {
-  about: {command: about, description: "info about me"},
-  contact: {command: contact, description: "how to contact", man:"contact <key> will open the contact."},
-  work:{command: work, description: "displays work info"},
-  studies:{command:studies, description: "displays studies info"}
+  about: { command: about, description: "info about me" },
+  contact: { command: contact, description: "how to contact", man: "contact <key> will open the contact." },
+  work: { command: work, description: "displays work info" },
+  studies: { command: studies, description: "displays studies info" }
 }
 
 const App = (props: any) => {
   return (<div
-  className="App"
+    className="App"
     style={{
       display: "flex",
       justifyContent: "center",
@@ -110,11 +109,10 @@ const App = (props: any) => {
       height: "100%"
     }}
   >
-   
-   <Terminal style={{ fontWeight: 'bold', fontSize: '1em' }}
+    <Terminal style={{ fontWeight: 'bold', fontSize: '1em' }}
       commands={commands}
       msg="Welcome to Juan Pablo Cruz Maseda's personal page. Try typing 'help'."
-    /> 
+    />
   </div>)
 }
 

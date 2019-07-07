@@ -1,5 +1,6 @@
 import { Pool, Particle, Bullet, Asteroid, Ship, Vec2D } from "./GameClasses";
 import { Color } from "../../Terminal/Terminal";
+import { Skill } from "../SkillItem";
 
 export default class Game {
     canvas: any
@@ -24,16 +25,17 @@ export default class Game {
     asteroidPool: Pool
     asteroids: Asteroid[]
 
-    skills: string []
+    skills: Skill[]
     ship: Ship
 
     skillConquered: any
     finishGame: any
     registerAnimationFrame: any
     color: Color
+    showInfo: any
 
 
-    constructor(canvas: any, skills: string[], color:Color, skillConquered: any, finishGame: any, registerAnimationFrame: any) {
+    constructor(canvas: any, skills: Skill[], color: Color, skillConquered: any, finishGame: any, registerAnimationFrame: any, showInfo: any) {
         this.canvas = canvas
         this.context = this.canvas.getContext('2d')
 
@@ -41,6 +43,7 @@ export default class Game {
         this.handleKeyDown = this.handleKeyDown.bind(this)
         this.handleKeyUp = this.handleKeyUp.bind(this)
         this.loop = this.loop.bind(this)
+
         window.onresize = this.onResize
 
         this.asteroidVelFactor = 0
@@ -60,6 +63,7 @@ export default class Game {
         this.skillConquered = skillConquered
         this.finishGame = finishGame
         this.registerAnimationFrame = registerAnimationFrame
+        this.showInfo = showInfo
 
         this.keyboardInit()
 
@@ -118,6 +122,9 @@ export default class Game {
         switch (event.keyCode) {
             case 27:
                 this.finishGame()
+                break
+            case 9:
+                this.showInfo()
                 break
             // A or LEFT
             case 65:
@@ -235,75 +242,63 @@ export default class Game {
     }
 
     updateParticles() {
-        for (let i = this.particles.length - 1; i > -1; --i) {
-            let p = this.particles[i]
-
+        this.particles.forEach((p: Particle) => {
             if (p.blacklisted) {
                 p.reset()
 
                 this.particles.splice(this.particles.indexOf(p), 1)
                 this.particlePool.disposeElement(p)
-
-                continue;
+            } else {
+                p.update()
             }
-
-            p.update()
-        }
+        })
     }
 
     updateBullets() {
-        for (let i = this.bullets.length - 1; i > -1; --i) {
-            let b = this.bullets[i]
-
+        this.bullets.forEach((b: Bullet) => {
             if (b.blacklisted) {
                 b.reset()
 
                 this.bullets.splice(this.bullets.indexOf(b), 1)
                 this.bulletPool.disposeElement(b)
+            } else {
+                b.update()
 
-                continue;
+                if (b.pos.getX() > this.screenWidth) b.blacklisted = true
+                else if (b.pos.getX() < 0) b.blacklisted = true
+
+                if (b.pos.getY() > this.screenHeight) b.blacklisted = true
+                else if (b.pos.getY() < 0) b.blacklisted = true
             }
-
-            b.update()
-
-            if (b.pos.getX() > this.screenWidth) b.blacklisted = true
-            else if (b.pos.getX() < 0) b.blacklisted = true
-
-            if (b.pos.getY() > this.screenHeight) b.blacklisted = true
-            else if (b.pos.getY() < 0) b.blacklisted = true
-        }
+        })
     }
 
     updateAsteroids() {
-        for (let i = this.asteroids.length - 1; i > -1; --i) {
-            let a = this.asteroids[i]
-
+        this.asteroids.forEach((a: Asteroid) => {
             if (a.blacklisted) {
                 a.reset()
 
                 this.asteroids.splice(this.asteroids.indexOf(a), 1)
                 this.asteroidPool.disposeElement(a)
+            } else {
+                a.update()
 
-                continue;
+                if (a.pos.getX() > this.screenWidth + a.radius) a.pos.setX(-a.radius)
+                else if (a.pos.getX() < -a.radius) a.pos.setX(this.screenWidth + a.radius)
+
+                if (a.pos.getY() > this.screenHeight + a.radius) a.pos.setY(-a.radius)
+                else if (a.pos.getY() < -a.radius) a.pos.setY(this.screenHeight + a.radius)
             }
-
-            a.update()
-
-            if (a.pos.getX() > this.screenWidth + a.radius) a.pos.setX(-a.radius)
-            else if (a.pos.getX() < -a.radius) a.pos.setX(this.screenWidth + a.radius)
-
-            if (a.pos.getY() > this.screenHeight + a.radius) a.pos.setY(-a.radius)
-            else if (a.pos.getY() < -a.radius) a.pos.setY(this.screenHeight + a.radius)
-        }
+        })
 
         if (this.asteroids.length < 5) {
             let factor = (Math.random() * 2) >> 0
 
-            this.generateAsteroid(this.screenWidth * factor, this.screenHeight * factor, 60, 'b', this.skills[Math.floor(Math.random() * this.skills.length)])
+            this.generateAsteroid(this.screenWidth * factor, this.screenHeight * factor, 60, 'b', this.skills[Math.floor(Math.random() * this.skills.length)].name)
         }
     }
 
-    generateAsteroid(x: number, y: number, radius: number, type: string ,skillName: string) {
+    generateAsteroid(x: number, y: number, radius: number, type: string, skillName: string) {
         let a = this.asteroidPool.getElement()
 
         if (!a) return
@@ -326,41 +321,26 @@ export default class Game {
     }
 
     checkBulletAsteroidCollisions() {
-        let i = this.bullets.length - 1
-        let j;
-
-        for (i; i > -1; --i) {
-            j = this.asteroids.length - 1
-            for (j; j > -1; --j) {
-                let b = this.bullets[i]
-                let a = this.asteroids[j]
-
+        this.bullets.forEach((b) => {
+            this.asteroids.forEach((a) => {
                 if (this.checkDistanceCollision(b, a)) {
                     b.blacklisted = true
-
                     this.destroyAsteroid(a)
                 }
-            }
-        }
+            })
+        })
     }
 
     checkShipAsteroidCollisions() {
-        let i = this.asteroids.length - 1
-        let j;
-
-        for (i; i > -1; --i) {
+        this.asteroids.forEach((a: Asteroid) => {
             let s = this.ship
-            let a = this.asteroids[i]
-
             if (this.checkDistanceCollision(a, s)) {
                 if (s.idle) return
-
                 s.idle = true
-
                 this.generateShipExplosion()
                 this.destroyAsteroid(a)
             }
-        }
+        })
     }
 
     generateShipExplosion() {
@@ -466,32 +446,26 @@ export default class Game {
     }
 
     renderParticles() {
-        for (let i = this.particles.length - 1; i > -1; --i) {
-            let p = this.particles[i]
-
+        this.particles.forEach((p: Particle) => {
             this.context.beginPath()
             this.context.strokeStyle = p.color
             this.context.arc(p.pos.getX() >> 0, p.pos.getY() >> 0, p.radius, 0, Math.PI * 2)
             if (Math.random() > 0.4) this.context.stroke()
             this.context.closePath()
-        }
+        })
     }
     renderBullets() {
-        for (let i = this.bullets.length - 1; i > -1; --i) {
-            let b = this.bullets[i]
-
+        this.bullets.forEach((b: Bullet) => {
             this.context.beginPath()
             this.context.strokeStyle = b.color
             this.context.arc(b.pos.getX() >> 0, b.pos.getY() >> 0, b.radius, 0, Math.PI * 2)
             if (Math.random() > 0.2) this.context.stroke()
             this.context.closePath()
-        }
+        })
     }
 
     renderAsteroids() {
-        for (let i = this.asteroids.length - 1; i > -1; --i) {
-            let a = this.asteroids[i]
-
+        this.asteroids.forEach((a: Asteroid) => {
             this.context.beginPath()
             this.context.lineWidth = (Math.random() > 0.2) ? 4 : 3
             this.context.strokeStyle = a.color
@@ -499,8 +473,8 @@ export default class Game {
             let j = a.sides
 
             let doublePI = Math.PI * 2
-            this.context.moveTo((a.pos.getX() + Math.cos(doublePI * (j / a.sides) + a.angle) * a.radius) >> 0, 
-                    (a.pos.getY() + Math.sin(doublePI * (j / a.sides) + a.angle) * a.radius) >> 0)
+            this.context.moveTo((a.pos.getX() + Math.cos(doublePI * (j / a.sides) + a.angle) * a.radius) >> 0,
+                (a.pos.getY() + Math.sin(doublePI * (j / a.sides) + a.angle) * a.radius) >> 0)
 
             for (j; j > -1; --j) {
                 this.context.lineTo(
@@ -513,7 +487,7 @@ export default class Game {
             if (Math.random() > 0.2) this.context.stroke()
 
             this.context.closePath()
-        }
+        })
     }
 
     renderScanlines() {
@@ -556,10 +530,7 @@ export default class Game {
     }
 
     resetAsteroids() {
-        for (let i = this.asteroids.length - 1; i > -1; --i) {
-            let a = this.asteroids[i]
-            a.blacklisted = true
-        }
+        this.asteroids.forEach((a: Asteroid) => a.blacklisted = true)
     }
 
 }
