@@ -24,7 +24,7 @@ class Prompt extends Component<Props, State> {
 
         this.carret = React.createRef()
         this.typeKey = this.typeKey.bind(this)
-        this.prev = this.props.getPrevCommand()
+        this.prev = this.props.getPrevCommand
 
         this.state = {
             text: ''
@@ -66,14 +66,13 @@ class Prompt extends Component<Props, State> {
                 } else {
                     if (keycode === 38) {// UP
                         event.preventDefault()
-                        let prevCommand = this.prev.next()
-                        
-                        if (prevCommand.value && prevCommand.value.length) {
-                            text = prevCommand.value
-                            hasModified = true
-                        }
+                        text = this.prev(1)
+                        hasModified = true
                     } else if (keycode === 40) { // DOWN
                         event.preventDefault()
+                        text = this.prev(-1)
+                        hasModified = true
+                        
                     }
                 }
         }

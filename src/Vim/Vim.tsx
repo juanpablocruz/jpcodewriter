@@ -4,6 +4,8 @@ import Carret from '../Terminal/Carret';
 import Footer from './Footer'
 import { Arguments } from '../Terminal/Terminal';
 import { pipe } from 'ramda';
+import { arrayTypeAnnotation } from '@babel/types';
+import curry from 'ramda/es/curry';
 
 interface Props {
     return: any
@@ -117,6 +119,15 @@ export default class Vim extends Component<Props, State>{
             (keycode > 218 && keycode < 227);   // [\]' (in order)
         let { text, currentCol, currentLine } = this.state
         let newPosition = { currentCol, currentLine }
+
+        let keys = [
+            {
+                type: "key",
+                value: "Enter",
+                fn: () => {}
+            }
+        ]
+
         if (event.key === "Enter") {
             text = this.insertKey('\n')
             newPosition = { currentCol: 0, currentLine: currentLine + 1 }
@@ -158,61 +169,64 @@ export default class Vim extends Component<Props, State>{
         }
     )
 
-    deleteChars = (modifiers:string) => (command:string) => {
-        let delNChars = 1
-        if (modifiers.length) {
-            if (!Number.isNaN(Number(modifiers))) {
-                delNChars = Number(modifiers)
-            }
-        }
+    deleteChars = (modifiers: string) => (command: string) => {
+        const getModifier = (modifiers: any) => (modifiers.length)
+            ? !Number.isNaN(Number(modifiers))
+                ? Number(modifiers) : 1 : 1
+        const delNChars = getModifier(modifiers)
         const { text, currentCol, currentLine } = this.state
 
         const getCurrentLineOfText = this.getCurrentLine(text)
-        let cursorLine = getCurrentLineOfText(currentLine)
-
-        let newCol = currentCol
-
         const getLineUntilCursor = this.getFromStart(currentCol)
         const getLineUntilEnd = this.getFromNUntilEnd(currentCol)
 
-        if (command === "x") {
-            let getNewText = (str: string) => (
-                getLineUntilCursor(str) +
-                this.getFromNUntilEnd(currentCol + delNChars)(str)
-            )
-            cursorLine = getNewText(cursorLine)
-        } else if (command === "X") {
-            let getNewText = (str: string) => (
-                this.getFromStart(currentCol - delNChars)(str) +
-                getLineUntilEnd(str)
-            )
-            cursorLine = getNewText(cursorLine)
-            if (currentCol > cursorLine.length - 1) {
-                newCol = cursorLine.length - 1
-            }
-        }
+        const getNewTextFwd = (str: string) => (
+            getLineUntilCursor(str) +
+            this.getFromNUntilEnd(currentCol + delNChars)(str)
+        )
+        const getNewTextBck = (str: string) => (
+            this.getFromStart(currentCol - delNChars)(str) +
+            getLineUntilEnd(str)
+        )
+        const mapCursor = (currentCol: number) => (
+            (cursorLine: string) => currentCol > cursorLine.length
+                ? { text: cursorLine, currentCol: cursorLine.length - 1 }
+                : { text: cursorLine, currentCol: currentCol }
+        )
+        const processCommand = (command: string) => (
+            (cursorLine: string) => command === "x"
+                ? getNewTextFwd(cursorLine) : getNewTextBck(cursorLine)
+        )
+        const process = processCommand(command)
+        const joinTextFromState = curry((text: string, currentLine: number, newState: any) => {
+            return { ...newState, text: this.replaceAndJoin(text)(currentLine)(newState.text) }
+        })
 
-        let newText = this.replaceAndJoin(text)(currentLine)(cursorLine)
-        return { text: newText, currentCol: newCol }
+        return pipe(
+            getCurrentLineOfText,
+            process,
+            mapCursor(currentCol),
+            joinTextFromState(text, currentLine)
+        )(currentLine)
     }
 
     deleteWord(modifiers: number) {
         const { currentLine, text, currentCol } = this.state
 
         const getCurrentLineOfText = this.getCurrentLine(text)
-        let cursorLine = getCurrentLineOfText(currentLine)
+        const cursorLine = getCurrentLineOfText(currentLine)
 
         const getLineUntilCursor = this.getFromStart(currentCol)
         const getLineUntilEnd = this.getFromNUntilEnd(currentCol)
 
-        let shiftAndJoin = (modifiers: number) =>
+        const shiftAndJoin = (modifiers: number) =>
             (words: string) => words.split(" ").slice(modifiers, words.length).join(" ")
-        let shiftAndJoinModifiers = shiftAndJoin(modifiers)
+        const shiftAndJoinModifiers = shiftAndJoin(modifiers)
 
-        let getLastPart = pipe(getLineUntilEnd, shiftAndJoinModifiers)
-        let getNewText = (str: string) => (getLineUntilCursor(str) + getLastPart(str))
+        const getLastPart = pipe(getLineUntilEnd, shiftAndJoinModifiers)
+        const getNewText = (str: string) => (getLineUntilCursor(str) + getLastPart(str))
 
-        let newText = this.replaceAndJoin(text)(currentLine)(getNewText(cursorLine))
+        const newText = this.replaceAndJoin(text)(currentLine)(getNewText(cursorLine))
         return newText
     }
 
@@ -264,9 +278,9 @@ export default class Vim extends Component<Props, State>{
                             if (!Number.isNaN(Number(newModifiers))) {
                                 deleteModifier = Number(newModifiers)
                             }
-                        } 
-                        newState = {text:this.deleteWord(deleteModifier)}
-                    } 
+                        }
+                        newState = { text: this.deleteWord(deleteModifier) }
+                    }
                     break
                 case "D":
                     const getLineUntilCursor = this.getFromStart(currentCol)
@@ -290,12 +304,12 @@ export default class Vim extends Component<Props, State>{
             return Object.assign(prevState, newState)
         }, {})
 
-        this.setState({...newState})
+        this.setState({ ...newState })
         return Object.keys(newState).length > 0
     }
 
     processCommandModeInput(event: KeyboardEvent) {
-        let {commandText} = this.state
+        let { commandText } = this.state
         switch (event.code) {
             case "ArrowUp":
                 commandText.push("k")
@@ -336,26 +350,25 @@ export default class Vim extends Component<Props, State>{
         event.preventDefault()
     }
 
+    trace = (label: string) => (x: any) => {
+        console.log(label, x)
+        return x
+    }
+
     render() {
-        let numberOfLines = this.getNumberOfLines()
-        let board: string[] = []
-        let text = this.state.text
-        if (text.length > 0) {
-            text.split('\n').map((e) => board.push(e))
+        const createBoard = (n: number) => new Array(n).fill('~')
+        const fillWithText = (text: string) => (board: string[]) => {
+            const textSplited = text.split('\n')
+            return board.map((e, i) => e = (i < textSplited.length) ? textSplited[i] : e)
         }
+        const filled = fillWithText(this.state.text)
+        const newBoard = pipe(Math.round, createBoard, filled)
 
-        for (let i = board.length; i < numberOfLines; i++) {
-            board.push('~')
-        }
-
-        let renderBoard = board.map((e, i) => {
-            if (i === this.state.currentLine) {
-                return <p key={i}>{e.substr(0, this.state.currentCol)}<Carret />{e.substr(this.state.currentCol + 1, e.length)}</p>
-            } else {
-                return <p key={i}>{e}</p>
-            }
-
-        })
+        let renderBoard = newBoard(this.getNumberOfLines()).map((e, i) => (
+            (i === this.state.currentLine)
+                ? <p key={i}>{e.substr(0, this.state.currentCol)}<Carret />{e.substr(this.state.currentCol + 1, e.length)}</p>
+                : <p key={i}>{e}</p>
+        ))
 
         return <div className="vim">
             <pre>{renderBoard}</pre>

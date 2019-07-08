@@ -179,11 +179,8 @@ export default class Game {
         this.updateParticles()
         this.updateBullets()
         this.updateAsteroids()
-
         this.checkCollisions()
-
         this.render()
-
         this.registerAnimationFrame(requestAnimationFrame(this.loop))
     }
 
