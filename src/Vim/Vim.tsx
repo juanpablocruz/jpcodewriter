@@ -4,7 +4,6 @@ import Carret from '../Terminal/Carret';
 import Footer from './Footer'
 import { Arguments } from '../Terminal/Terminal';
 import { pipe } from 'ramda';
-import { arrayTypeAnnotation } from '@babel/types';
 import curry from 'ramda/es/curry';
 
 interface Props {
@@ -46,9 +45,9 @@ export default class Vim extends Component<Props, State>{
         this.processInsertModeInput = this.processInsertModeInput.bind(this)
         this.processCommandModeInput = this.processCommandModeInput.bind(this)
         this.deleteChars = this.deleteChars.bind(this)
+        this.performCommands = this.performCommands.bind(this)
 
         this.tabSize = 4
-        window.addEventListener("keydown", this.handleInput)
 
         let text = ""
         let file = null
@@ -69,6 +68,10 @@ export default class Vim extends Component<Props, State>{
         this.getFromStart = this.getLineFrom(0)
     }
 
+    componentDidMount() {
+        window.addEventListener("keydown", this.handleInput)
+    }
+
     componentWillUnmount() {
         window.removeEventListener('keydown', this.handleInput, false)
     }
@@ -79,80 +82,122 @@ export default class Vim extends Component<Props, State>{
 
     handleMovementKeys(direction: CarretMovement) {
         let { currentCol, currentLine, text } = this.state
-        if (direction === CarretMovement.RIGHT) {
-            currentCol += 1
-        } else if (direction === CarretMovement.LEFT) {
-            currentCol -= 1
-        } else if (direction === CarretMovement.DOWN) {
-            let textLines = text.split('\n').length - 1
-            if (currentLine < textLines) {
-                currentLine++
-            }
-        } else if (direction === CarretMovement.UP) {
-            if (currentLine > 0) {
-                currentLine--
-                currentCol = text.split("\n")[currentLine].length - 1
-            }
+        const directions = {
+            [CarretMovement.RIGHT]: ({ text = "", currentCol = 0, currentLine = 0 }) => (
+                { currentCol: currentCol + 1 }
+            ),
+            [CarretMovement.LEFT]: ({ text = "", currentCol = 0, currentLine = 0 }) => (
+                { currentCol: currentCol - 1 }
+            ),
+            [CarretMovement.DOWN]: ({ text = "", currentCol = 0, currentLine = 0 }) => (
+                text.split('\n').length > currentLine
+                    ? { currentLine: currentLine + 1 } : { currentLine }
+            ),
+            [CarretMovement.UP]: ({ text = "", currentCol = 0, currentLine = 0 }) => (
+                currentLine > 0
+                    ? { currentLine: currentLine - 1, currentCol: text.split("\n")[currentLine].length - 1 }
+                    : currentLine
+            ),
         }
-        return { currentLine, currentCol }
+
+        return directions[direction]
+            ? directions[direction]({ text, currentCol, currentLine })
+            : {}
     }
 
     insertKey(key: string) {
-        let text = this.state.text
-        let splittedText = text.split('\n')
-        let currentLine = splittedText[this.state.currentLine]
-        splittedText[this.state.currentLine] = currentLine.substr(0, this.state.currentCol) + key + currentLine.substr(this.state.currentCol, currentLine.length)
-
-        let newText = splittedText.join('\n')
-        return newText
+        const { text } = this.state
+        const currentLine = this.getCurrentLine(text)(this.state.currentLine)
+        const getLineUntilCursor = this.getFromStart(this.state.currentCol)
+        const getLineUntilEnd = this.getFromNUntilEnd(this.state.currentCol)
+        const concatWithKey = (currentLine: string) => (key: string) => (
+            "".concat(
+                getLineUntilCursor(currentLine),
+                key,
+                getLineUntilEnd(currentLine)
+            ))
+        return pipe(
+            concatWithKey(currentLine),
+            this.insertTextAndJoin(text)(this.state.currentLine)
+        )(key)
     }
 
-    processInsertModeInput(event: KeyboardEvent) {
-        let keycode = event.keyCode;
+    head = (arr: any) => arr.length ? arr[0] : null
+    tail = (arr: any) => arr.length ? arr[arr.length - 1] : this.head(arr)
 
-        let valid =
-            (keycode > 47 && keycode < 58) || // number keys
+    processInsertModeInput(event: KeyboardEvent) {
+        const isValid = (keycode: number) => (keycode > 47 && keycode < 58) || // number keys
             keycode === 32 || keycode === 13 || // spacebar & return key(s) (if you want to allow carriage returns)
             (keycode > 64 && keycode < 91) || // letter keys
             (keycode > 95 && keycode < 112) || // numpad keys
             (keycode > 185 && keycode < 193) || // ;=,-./` (in order)
-            (keycode > 218 && keycode < 227);   // [\]' (in order)
-        let { text, currentCol, currentLine } = this.state
-        let newPosition = { currentCol, currentLine }
-
-        let keys = [
+            (keycode > 218 && keycode < 227)
+        const keys = [
             {
                 type: "key",
                 value: "Enter",
-                fn: () => {}
-            }
+                fn: ({ text = "", currentCol = 0, currentLine = 0 }) => ({
+                    text: this.insertKey('\n'),
+                    currentCol: 0,
+                    currentLine: currentLine + 1
+                })
+            }, {
+                type: "code",
+                value: "Tab",
+                fn: ({ text = "", currentCol = 0, currentLine = 0 }) => (
+                    {
+                        text: text + '\t',
+                        currentCol: currentCol + this.tabSize
+                    }
+                )
+            }, {
+                type: "code",
+                value: "Backspace",
+                fn: ({ text = "", currentCol = 0, currentLine = 0 }) => (
+                    {
+                        text: text.slice(0, -1),
+                        currentCol: currentCol + 1
+                    }
+                )
+            }, {
+                type: "code",
+                value: "ArrowRight",
+                fn: ({ text = "", currentCol = 0, currentLine = 0 }) => (
+                    { ...this.handleMovementKeys(CarretMovement.RIGHT) }
+                )
+            }, {
+                type: "code",
+                value: "ArrowLeft",
+                fn: ({ text = "", currentCol = 0, currentLine = 0 }) => (
+                    { ...this.handleMovementKeys(CarretMovement.LEFT) }
+                )
+            }, {
+                type: "code",
+                value: "ArrowDown",
+                fn: ({ text = "", currentCol = 0, currentLine = 0 }) => (
+                    { ...this.handleMovementKeys(CarretMovement.DOWN) }
+                )
+            }, {
+                type: "code",
+                value: "ArrowUp",
+                fn: ({ text = "", currentCol = 0, currentLine = 0 }) => (
+                    { ...this.handleMovementKeys(CarretMovement.UP) }
+                )
+            },
         ]
-
-        if (event.key === "Enter") {
-            text = this.insertKey('\n')
-            newPosition = { currentCol: 0, currentLine: currentLine + 1 }
-        } else if (event.code === "Tab") {
-            text = text + '\t'
-            newPosition.currentCol = currentCol + this.tabSize
-        } else if (event.code === "Backspace") {
-            text = text.slice(0, -1)
-            newPosition.currentCol = currentCol + 1
-        } else if (event.code === "ArrowRight") {
-            newPosition = this.handleMovementKeys(CarretMovement.RIGHT)
-        } else if (event.code === "ArrowLeft") {
-            newPosition = this.handleMovementKeys(CarretMovement.LEFT)
-        } else if (event.code === "ArrowDown") {
-            newPosition = this.handleMovementKeys(CarretMovement.DOWN)
-        } else if (event.code === "ArrowUp") {
-            newPosition = this.handleMovementKeys(CarretMovement.UP)
-        }
-        else if (valid) {
-            text = this.insertKey(event.key)
-            newPosition.currentCol = currentCol + 1
-        } else {
-            console.log(event)
-        }
-        this.setState({ ...newPosition, text })
+        const getEvent = (event: any) => keys.filter((e) => event[e.type] === e.value)
+        const processEvents = curry((originalEvent: any, text: string, currentCol: number, currentLine: number, events: any) => (
+            events.length
+                ? events.map((item: any) => item.fn({ text, currentCol, currentLine }))
+                : isValid(originalEvent.keyCode)
+                    ? [{ text: this.insertKey(event.key), currentCol: currentCol + 1 }]
+                    : []
+        ))
+        return pipe(
+            getEvent,
+            processEvents(event, this.state.text, this.state.currentCol, this.state.currentLine),
+            this.head
+        )(event)
     }
 
     getLineFrom = (from: number) => (dest: number) => (sentence: string) => sentence.slice(from, dest)
@@ -161,11 +206,19 @@ export default class Vim extends Component<Props, State>{
     getCurrentLine = (text: string) => (
         (currentLine: number) => this.splitText(text)[currentLine]
     )
-    replaceAndJoin = (text: string) => (
+    replaceAt(index: number, value: any, array: any) {
+        const ret = array.slice(0);
+        ret[index] = value;
+        return ret;
+    }
+    join = (arr: any) => arr.join('\n')
+    
+    insertTextAndJoin = (text: string) => (
         (currentLine: number) => (newText: string) => {
-            let splitted = this.splitText(text)
-            splitted[currentLine] = newText
-            return splitted.join('\n')
+            const replaceCurry = curry(this.replaceAt)
+            return pipe(this.splitText,
+                replaceCurry(currentLine, newText),
+                this.join)(text)
         }
     )
 
@@ -199,7 +252,7 @@ export default class Vim extends Component<Props, State>{
         )
         const process = processCommand(command)
         const joinTextFromState = curry((text: string, currentLine: number, newState: any) => {
-            return { ...newState, text: this.replaceAndJoin(text)(currentLine)(newState.text) }
+            return { ...newState, text: this.insertTextAndJoin(text)(currentLine)(newState.text) }
         })
 
         return pipe(
@@ -209,7 +262,6 @@ export default class Vim extends Component<Props, State>{
             joinTextFromState(text, currentLine)
         )(currentLine)
     }
-
     deleteWord(modifiers: number) {
         const { currentLine, text, currentCol } = this.state
 
@@ -226,8 +278,7 @@ export default class Vim extends Component<Props, State>{
         const getLastPart = pipe(getLineUntilEnd, shiftAndJoinModifiers)
         const getNewText = (str: string) => (getLineUntilCursor(str) + getLastPart(str))
 
-        const newText = this.replaceAndJoin(text)(currentLine)(getNewText(cursorLine))
-        return newText
+        return this.insertTextAndJoin(text)(currentLine)(getNewText(cursorLine))
     }
 
     performCommands(commandText: string[]): boolean {
@@ -284,10 +335,10 @@ export default class Vim extends Component<Props, State>{
                     break
                 case "D":
                     const getLineUntilCursor = this.getFromStart(currentCol)
-                    const replaceAndJoinText = this.replaceAndJoin(text)(currentLine)
+                    const insertTextAndJoinCurry = this.insertTextAndJoin(text)(currentLine)
                     const getNewText = pipe(
                         getLineUntilCursor as (str: string) => string,
-                        replaceAndJoinText
+                        insertTextAndJoinCurry
                     )
                     newState = { text: getNewText(cursorLine) }
                     break
@@ -301,53 +352,44 @@ export default class Vim extends Component<Props, State>{
                         modifiers += command
                     break
             }
-            return Object.assign(prevState, newState)
+            return Object.assign({}, prevState, newState)
         }, {})
 
-        this.setState({ ...newState })
-        return Object.keys(newState).length > 0
+        return { ...newState, commandText: commandText }
     }
 
     processCommandModeInput(event: KeyboardEvent) {
-        let { commandText } = this.state
-        switch (event.code) {
-            case "ArrowUp":
-                commandText.push("k")
-                break
-            case "ArrowDown":
-                commandText.push("j")
-                break
-            case "ArrowLeft":
-                commandText.push("h")
-                break
-            case "ArrowRight":
-                commandText.push("l")
-                break
-            case "ShiftLeft":
-            case "ShiftRight":
-                break;
-            default:
-                commandText.push(event.key)
-                break
+        const commands: { [key: string]: any } = {
+            "ArrowUp": (commandText: string[]) => commandText.concat('k'),
+            "ArrowDown": (commandText: string[]) => commandText.concat('k'),
+            "ArrowLeft": (commandText: string[]) => commandText.concat('h'),
+            "ArrowRight": (commandText: string[]) => commandText.concat('l'),
+            "ShiftLeft": (commandText: string[]) => commandText,
+            "ShiftRight": (commandText: string[]) => commandText,
         }
-
-        if (!this.performCommands(commandText)) {
-            this.setState({ commandText })
-        } else {
-            this.setState({ commandText: [] })
-        }
+        const addEventKeyword = (event: KeyboardEvent) => (
+            (commandText: string[]) => commands[event.code]
+                ? commands[event.code](commandText)
+                : commandText.concat(event.key)
+        )
+        const removeCommandIfExecuted = (newState: any) => (
+            Object.keys(newState).length > 1 ? Object.assign({}, newState, { commandText: [] }) : newState
+        )
+        return pipe(addEventKeyword(event),
+            this.performCommands,
+            removeCommandIfExecuted
+        )(this.state.commandText)
     }
 
     handleInput(event: KeyboardEvent) {
-        if (event.key === "Escape") {
-            this.setState({ mode: Mode.Command, commandText: [] })
-        }
-        else if (this.state.mode === Mode.Command) {
-            this.processCommandModeInput(event)
-        } else {
-            this.processInsertModeInput(event)
-        }
+        const newState = event.key === "Escape"
+            ? { mode: Mode.Command, commandText: [] }
+            : this.state.mode === Mode.Command
+                ? this.processCommandModeInput(event)
+                : this.processInsertModeInput(event)
+
         event.preventDefault()
+        this.setState(newState)
     }
 
     trace = (label: string) => (x: any) => {

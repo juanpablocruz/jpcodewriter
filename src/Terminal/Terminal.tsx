@@ -7,7 +7,6 @@ import "./style/Terminal.css"
 import Skills from '../Skills/Skills';
 import { Expression } from './Math';
 import * as R from 'ramda'
-import { JSXElement } from '@babel/types';
 import pipe from 'ramda/es/pipe';
 
 interface Command {
