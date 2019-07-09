@@ -1,11 +1,11 @@
 import React from 'react'
 import Prompt from './Prompt'
-import TextHistoric from './TextHistoric'
+import TextHistoric, { Message } from './TextHistoric'
 import { Color } from './Terminal';
 import './style/Screen.css'
 
 interface Props {
-    output?: object[],
+    output?: Message[],
     onInput: any,
     getPrevCommand: any,
     color: Color,
