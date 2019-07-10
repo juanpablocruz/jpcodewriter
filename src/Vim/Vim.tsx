@@ -4,7 +4,7 @@ import Carret from '../Terminal/Carret';
 import Footer from './Footer'
 import { Arguments, head } from '../Terminal/Terminal';
 import { pipe } from 'ramda';
-import curry from 'ramda/es/curry';
+import {curry} from 'ramda';
 
 
 interface Props {

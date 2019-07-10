@@ -9,7 +9,6 @@ import { Expression } from './Math';
 import { pipe, curry, lensProp, view } from 'ramda'
 import { Message } from './TextHistoric';
 import { IO, Maybe } from 'ramda-fantasy'
-const { Just, Nothing } = Maybe
 
 interface Command {
     command: any,
@@ -79,12 +78,12 @@ export const liftToArray = (x: any) => [x]
 export const omitInput = (x: any) => ""
 export const head = (arr: any) => arr.length ? (arr[0]) : null
 export const tail = (arr: any) => arr.length ? arr[arr.length - 1] : head(arr)
-export const trace = (label: string) => (inpt: any) => { console.log(label, inpt); return inpt }
-export const liftP = (fn: any) => {
-    return (...args: any) => {
-        return Promise.all(args).then((x) => fn.apply(null, x))
-    }
-}
+export const trace = (label: string) => (inpt: any) => { console.log(`${label}: ${inpt}`); return inpt }
+
+export const getCommandParts = (text: string) => text.split(" ")
+export const getCommandFromArgs = (text: string) => head(getCommandParts(text))
+export const getRestArgs = (text: string) => getCommandParts(text).slice(1)
+export const newState = (newState: any) => (state: any, props: any) => ({ newState })
 
 const getFolderContents = curry((fileSystem: Filesystem, args: any, folder: any) => (
     fileSystem.getFolderContents(head(args)).map((el: Folder) => el.name)
@@ -359,11 +358,6 @@ class Terminal extends Component<Props, State> {
         }
     }
 
-    getCommandParts = (text: string) => text.split(" ")
-    getCommandFromArgs = (text: string) => head(this.getCommandParts(text))
-    getRestArgs = (text: string) => this.getCommandParts(text).slice(1)
-
-    newState = (newState: any) => (state: any, props: any) => ({ newState })
     onInput = async (text: string) => {
         const { commands: stateCommands,
             screenText: stateScreenText
@@ -382,7 +376,7 @@ class Terminal extends Component<Props, State> {
             path: this.getCurrentFolderPath()
         })
         const execCommandCurried = await executeCommand(stateCommands,
-            this.getRestArgs(text),
+            getRestArgs(text),
             screenText
         )
         const printOutput = ({ output, commandHistory }:
@@ -397,7 +391,7 @@ class Terminal extends Component<Props, State> {
         const setState = (text: any) => this.setState(() => { return text })
 
         const output = await pipe(
-            this.getCommandFromArgs,
+            getCommandFromArgs,
             execCommandCurried
         )(text)
         pipe(

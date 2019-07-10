@@ -1,5 +1,5 @@
 import { IO } from 'ramda-fantasy'
-import pipe from 'ramda/es/pipe';
+import {pipe} from 'ramda';
 
 export interface Folder {
     id: number
