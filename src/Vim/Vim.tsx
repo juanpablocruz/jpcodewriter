@@ -2,9 +2,10 @@ import React, { Component } from 'react'
 import './style/Vim.css'
 import Carret from '../Terminal/Carret';
 import Footer from './Footer'
-import { Arguments } from '../Terminal/Terminal';
+import { Arguments, head } from '../Terminal/Terminal';
 import { pipe } from 'ramda';
 import curry from 'ramda/es/curry';
+
 
 interface Props {
     return: any
@@ -88,8 +89,7 @@ export default class Vim extends Component<Props, State>{
         window.removeEventListener('keydown', this.handleInput, false)
     }
 
-    head = (arr: any) => arr.length ? arr[0] : null
-    tail = (arr: any) => arr.length ? arr[arr.length - 1] : this.head(arr)
+    
     join = (arr: any) => arr.length ? arr.join('\n') : ""
     replaceAt = (index: number, value: any, array: any) => {
         const rep = array.slice(0)
@@ -223,7 +223,7 @@ export default class Vim extends Component<Props, State>{
         return pipe(
             getEvent,
             processEvents(event, this.state),
-            this.head
+            head
         )(event)
     }
 
