@@ -17,9 +17,8 @@ class Boot extends Component<Props, State> {
     constructor(props:Props) {
 
         super(props)
-
-        figlet.defaults({fontPath: "assets/fonts"})
         
+        figlet.defaults({fontPath: "assets/fonts"})
 
         this.state = {
             text: ''

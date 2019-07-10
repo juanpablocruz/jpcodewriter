@@ -1,96 +1,65 @@
-import React, { Component } from 'react'
+import React, { Component, useState, useEffect, RefObject } from 'react'
 import "./style/prompt.css"
 import { Color } from './Terminal';
 import Carret from './Carret';
+import { pipe } from 'ramda';
+import { isValid } from '../Vim/Vim';
 
 interface Props {
     onInput: any,
     getPrevCommand: any,
-    color ?: Color,
+    color?: Color,
     currentPath: string
 }
-
-
-interface State {
-    text: string
+const inputActions: { [key: number]: any } = {
+    8: ({ text, onInput }: { text: string, onInput: any }) => (
+        text.length > 0 ?
+            () => text.substring(0, text.length - 1)
+            : ""
+    ),
+    13: ({ text, onInput }: { text: string, onInput: any }) => {
+        onInput(text)
+        return ""
+    }
 }
 
-class Prompt extends Component<Props, State> {
-    carret: any
-    prev: any
+const Prompt = (props: Props) => {
 
-    constructor(props: any) {
-        super(props)
+    const [text, setText] = useState('')
+    const carret: RefObject<HTMLDivElement> = React.createRef()
 
-        this.carret = React.createRef()
-        this.typeKey = this.typeKey.bind(this)
-        this.prev = this.props.getPrevCommand
-
-        this.state = {
-            text: ''
+    const isCodeValid = ({ keyCode, ...rest }: { keyCode: number }) => isValid(keyCode)
+    const typeKey = ({ onInput, getPrevCommand }: Props) =>
+        (event: any) => {
+            const mapSpecialChars = (key: string) => (key === 'Dead') ? '^' : key
+            const defaultCase = (text: string, event: any) => (
+                () => isCodeValid(event) ? text + mapSpecialChars(event.key) :
+                    event.keyCode === 38 ? getPrevCommand(1) :
+                        event.keyCode === 40 ? getPrevCommand(-1) :
+                            text
+            )
+            const e = Object.assign({},event)
+            setText(inputActions[e.keyCode] ?
+                inputActions[e.keyCode]({ text, onInput })
+                : defaultCase(text, e)
+            )
+            event.preventDefault()
         }
-    }
+    useEffect(() => {
+        return () => {
+            if (carret && carret.current)
+                carret.current.focus()
+        };
+    }, [])
 
-    typeKey = (event: any) => {
-        let text = this.state.text
-        let hasModified = false
-        
-        switch (event.keyCode) {
-            case 8:
-                if (text.length > 0) {
-                    text = text.substring(0, text.length - 1);
-                    hasModified = true
-                }
-                break
-            case 13:
-                this.props.onInput(text)
-                text = ""
-                hasModified = true
-                break
-            default:
-                let keycode = event.keyCode
-                
-                var valid =
-                    (keycode > 47 && keycode < 58) || // number keys
-                    keycode === 32 || keycode === 13 || // spacebar & return key(s) (if you want to allow carriage returns)
-                    (keycode > 64 && keycode < 91) || // letter keys
-                    (keycode > 95 && keycode < 112) || // numpad keys
-                    (keycode > 185 && keycode < 193) || // ;=,-./` (in order)
-                    (keycode > 218 && keycode < 223)   // [\]' (in order)
+    return <div className="prompt-input"
+        ref={carret}
+        onKeyDown={typeKey(props)}
+        tabIndex={0}>
+        <span>[{props.currentPath}] > </span>{text}{
+            <Carret color={props.color} />}
+    </div>
 
-                if (valid) {
-                    let key = event.key
-                    if (key === 'Dead') {key = '^'}
-                    text = this.state.text +key
-                    hasModified = true
-                } else {
-                    if (keycode === 38) {// UP
-                        event.preventDefault()
-                        text = this.prev(1)
-                        hasModified = true
-                    } else if (keycode === 40) { // DOWN
-                        event.preventDefault()
-                        text = this.prev(-1)
-                        hasModified = true
-                        
-                    }
-                }
-        }
-        if (hasModified) {
-            this.setState({ text })
-        }
-    }
-
-    componentDidMount() {
-        this.carret.focus()
-    }
-
-
-    render() {
-        return <div className="prompt-input" ref={(input) => this.carret = input} onKeyDown={this.typeKey} tabIndex={0}>
-            <span>[{this.props.currentPath}] > </span>{this.state.text}{<Carret color={this.props.color}/>}
-        </div>
-    }
 }
 
 export default Prompt

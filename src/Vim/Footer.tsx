@@ -7,10 +7,6 @@ interface Props {
     commandText: string[]
 }
 
-interface State {
-
-}
-
 const translateMode = (mode?:Mode) => {
     switch(mode) {
         case Mode.Insert:

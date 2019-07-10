@@ -69,6 +69,29 @@ export const Ambar: Color = { name: "amber", color: "#FFB000", shadow: { color: 
 export const Pink: Color = { name: "pink", color: "#FF1493", shadow: { color: "rgba(255, 20, 147, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
 export const AppleGreen: Color = { name: "appleGreen", color: "#33FF33", shadow: { color: "rgba(51,255,51, 0.8)", offset: { width: 0, height: 0 }, radius: 2 } }
 
+export const appendOutput = (buffer: any) => (output: any) => (
+    output.reduce((prev: any, el: any) =>
+        prev.concat({ msg: el, type: "output" }), buffer)
+)
+export const liftToArray = (x: any) => [x]
+export const omitInput = (x: any) => ""
+export const head = (arr: any) => arr[0]
+export const tail = (arr: any) => arr[arr.length - 1]
+export const trace = (label: string) => (inpt: any) => { console.log(label, inpt); return inpt }
+export const liftP = (fn: any) => {
+    return (...args: any) => {
+        return Promise.all(args).then((x) => fn.apply(null, x))
+    }
+}
+
+
+const getFolderContents = curry(async (fileSystem: any, args: any, folder: any) => {
+    const data: any = await fileSystem.getFolderContents(
+        head(args)
+    )
+    return data.map((el: Folder) => el.name)
+})
+
 class Terminal extends Component<Props, State> {
 
     scrolldelay: any
@@ -95,7 +118,6 @@ class Terminal extends Component<Props, State> {
         this.getPrevCommand = this.getPrevCommand.bind(this)
         this.finnishBoot = this.finnishBoot.bind(this)
         this.pageScroll = this.pageScroll.bind(this)
-
 
         this.scrolldelay = null
 
@@ -151,97 +173,88 @@ class Terminal extends Component<Props, State> {
         return screenText
     }
 
-    appendOutput = (buffer: any) => (output: any) => {
-        return output.reduce((prev: any, el: any) => prev.concat({ msg: el, type: "output" }), buffer)
-    }
-
-    liftP = (fn: any) => {
-        return (...args: any) => {
-            return Promise.all(args).then((x) => fn.apply(null, x))
-        }
-    }
-
     cat = async (args: string[], screenText: string) => {
         const getContents = (fileSystem: Filesystem) => async (file: string) => await fileSystem.getFileContents(file)
         const getContentsFromFs = getContents(this.state.fileSystem)
         const getFileDetails = (contents: any) => contents.map((c: any) => c.details)
-        return await args.length ?
-            pipeP(this.head,
-                getContentsFromFs,
-                this.trace("after promise:"),
-                getFileDetails,
-                this.appendOutput(screenText),
-                this.trace("")
-            )(args)
+        return args.length ?
+            pipe(getFileDetails,
+                appendOutput(screenText)
+            )(await getContentsFromFs(head(args)))
             : screenText
     }
 
-    help = (args: string[], print: any) => {
+    help = (args: string[], screenText: string) => {
         if (!args.length) {
-            const getEntries = (commands: any) => Object.entries(commands)
-            const getWithDescription = (commands: any) => commands.filter((c: any) => c[1].description.length)
-            const getHelpText = (commands: any) => commands.map((e: any) => `${e[0]}:\t${e[1].description}`)
-            const getText = pipe(getEntries, getWithDescription, getHelpText)
-            print(...getText(this.state.commands))
+            const getCommands = (commands: any) => Object.entries(commands)
+            const filterHasDesc = (commands: any) => commands.filter((c: any) => c[1].description.length)
+            const formatHelpText = (commands: any) => commands.map((e: any) => `${e[0]}:\t${e[1].description}`)
+            return pipe(
+                getCommands,
+                filterHasDesc,
+                formatHelpText,
+                appendOutput(screenText))(this.state.commands)
         } else {
-            const hasCommand = (commandList: any, command: any) => commandList.hasOwnProperty(command)
-            const hasMan = (commandList: any) => (command: any) => hasCommand(commandList, command)
-                ? commandList[command].hasOwnProperty("man")
-                    ? commandList[command].man : `${command} has no man page`
-                : ""
-            const hasManWithList = hasMan(this.state.commands)
-            const exec = pipe(this.head, hasManWithList, print)
-            exec(args)
+            const commandHasMan = (commandList: any) =>
+                (command: any) => (
+                    commandList.hasOwnProperty(command)
+                        && commandList[command].hasOwnProperty("man")
+                        ? commandList[command].man
+                        : `${command} has no man page`
+                )
+            return pipe(head,
+                commandHasMan(this.state.commands),
+                liftToArray,
+                appendOutput(screenText))(args)
         }
     }
 
-    ls = async (args: string[], print: any) => {
-        const getCurrentFolderContents = (fileSystem: any) => () => {
-            return fileSystem.getCurrentFolderContents().map((el: Folder) => el.name)
-        }
-        const getFolderContents = curry(async (fileSystem: any, folder: any) => {
-            const data: any = await fileSystem.getFolderContents(
-                args[0]
+    ls = async (args: string[], screenText: string) => {
+        const getCurrentFolderContents = (fileSystem: any) =>
+            () => (
+                fileSystem.getCurrentFolderContents().map(
+                    (el: Folder) => el.name
+                )
             )
-            return data.map((el: Folder) => el.name)
-        })
-
         const currentFSFolder = getCurrentFolderContents(this.state.fileSystem)
-        const getFolderContentsFs = getFolderContents(this.state.fileSystem)
+        const getFolderContentsFs = getFolderContents(this.state.fileSystem, args)
+        const doLs = async (args: any) =>
+            !args.length ? currentFSFolder()
+                : await getFolderContentsFs(args)
 
-        const doLs = async (args: any) => !args.length ? currentFSFolder() : await getFolderContentsFs(args)
-        print(...await doLs(args))
+        return appendOutput(screenText)(await doLs(args))
     }
 
-    cd = (args: string[], print: any) => {
-        const doChange = (folder: any) => { this.state.fileSystem.changeToFolder(folder); return "" }
-        const doCd = (args: any) => args.length ? doChange(this.head(args)) : ""
-        const exec = pipe(doCd, this.trace("after cd"), print)
-        exec(args)
+    cd = (args: string[], screenText: string) => {
+        const doCd = (folder: any) => (
+            folder.length ? this.state.fileSystem.changeToFolder(folder)
+                : ""
+        )
+        return pipe(head, doCd,
+            omitInput,
+            liftToArray,
+            appendOutput(screenText))(args)
     }
 
-    mkdir = (args: string[], print: any) => {
+    mkdir = (args: string[], screenText: string) => {
         const doCreate = (folder: any) => { this.state.fileSystem.createFolder(folder); return "" }
-        const doMkdir = (args: any) => args.length ? doCreate(this.head(args)) : ""
-        const exec = pipe(doMkdir, print)
-        exec(args)
+        const doMkdir = (args: any) => args.length ? doCreate(head(args)) : ""
+        return pipe(doMkdir, liftToArray, appendOutput(screenText))(args)
     }
 
-    touch = (args: string[], print: any) => {
+    touch = (args: string[], screenText: string) => {
         const doCreate = (file: any) => { this.state.fileSystem.createFile(file); return "" }
-        const doTouch = (args: any) => args.length ? doCreate(this.head(args)) : ""
-        const exec = pipe(doTouch, print)
-        exec(args)
+        const doTouch = (args: any) => args.length ? doCreate(head(args)) : ""
+        return pipe(doTouch, liftToArray, appendOutput(screenText))(args)
     }
 
-    rm = (args: string[], print: any) => {
+    rm = (args: string[], screenText: string) => {
         const doRemove = (elem: any) => { this.state.fileSystem.removeElement(elem); return "" }
-        const doRm = (args: any) => args.length ? doRemove(this.head(args)) : ""
-        const exec = pipe(doRm, print)
-        exec(args)
+        const doRm = (args: any) => args.length ? doRemove(head(args)) : ""
+        return pipe(doRm, liftToArray, appendOutput(screenText))(args)
     }
 
-    vi = async (args: string[], print: any) => {
+    vi = async (args: string[], screenText: string) => {
         const { fileSystem } = this.state
 
         const curriedSave = curry((fileSystem: Filesystem, data: Arguments) => (
@@ -275,12 +288,10 @@ class Terminal extends Component<Props, State> {
                 }]
             : []
 
-        const exec = pipe(
+        return pipe(
             initVim(save, returnFn),
             this.bootProgram(programArgs),
-            print)
-
-        exec(programArgs)
+            appendOutput(screenText))(programArgs)
     }
 
     bootProgram = (programArgs: Arguments[]) => (program: any) => {
@@ -288,31 +299,29 @@ class Terminal extends Component<Props, State> {
         return ""
     }
 
-    skills = (args: string[], print: any) => {
+    skills = (args: string[], screenText: string) => {
         const returnFn = () => { this.setState({ programMode: false, program: null }) }
         const initializeProgram = (color: Color) => (returnFn: any) => <Skills
             return={returnFn}
             color={color}
         />
         const initSkills = initializeProgram(this.state.color)
-        const execSkills = pipe(
+        return pipe(
             initSkills,
             this.bootProgram([]),
-            print
-        )
-
-        execSkills(returnFn)
+            appendOutput(screenText)
+        )(returnFn)
     }
 
-    calc = (args: string[], print: any) => {
+    calc = (args: string[], screenText: string) => {
         let expresion = new Expression(args.join(''))
         try {
             let result = (expresion.resolve())
             if (result) {
-                print(result)
+                return appendOutput(screenText)(result)
             }
         } catch (err) { console.log(err) }
-        print()
+        return appendOutput(screenText)("")
     }
 
     pageScroll = () => {
@@ -325,31 +334,22 @@ class Terminal extends Component<Props, State> {
     }
 
     print = (...args: any) => {
-        //const screenText = args.reduce((prev:any, el:any) => prev.concat({ msg: el, type: "output" }), [] as Message[])
-        this.setState(() => ({ screenText: this.head(args) }), () => { this.pageScroll() })
+        this.setState(() => ({ screenText: head(args) }), () => { this.pageScroll() })
     }
 
-    fallBackCommand(command: string, buffer: any) {
-        if (command.length) {
-            const screenText = buffer.concat({
-                msg: `Unrecognized command '${command}'`,
-                type: "output"
-            })
-
-            this.setState({ screenText }, () => { this.pageScroll() })
-        }
-        return command
+    fallBackCommand(command: string, screenText: any) {
+        const generateErrorCommand = (command:string) => `Unrecognized command '${command}'`
+        return pipe(generateErrorCommand, 
+            liftToArray,
+            appendOutput(screenText)
+            )(command)
     }
-
-    head = (arr: any) => arr[0]
-    tail = (arr: any) => arr[arr.length - 1]
-    trace = (label: string) => (inpt: any) => { console.log(label, inpt); return inpt }
 
     getCurrentFolderPath = () => this.state.fileSystem.currentFolder.fullPath
 
     appendToCommandHistory = ({ command = "", output = [] }) => {
         return {
-            commandHistory: (command.length && this.tail(this.state.commandHistory) === command
+            commandHistory: (command.length && tail(this.state.commandHistory) === command
                 ? this.state.commandHistory
                 : this.state.commandHistory.concat(command)),
             output
@@ -357,31 +357,33 @@ class Terminal extends Component<Props, State> {
     }
 
     getCommandParts = (text: string) => text.split(" ")
-    getCommandFromArgs = (text: string) => this.head(this.getCommandParts(text))
+    getCommandFromArgs = (text: string) => head(this.getCommandParts(text))
     getRestArgs = (text: string) => this.getCommandParts(text).slice(1)
 
     newState = (newState: any) => (state: any, props: any) => ({ newState })
-    onInput = (text: string) => {
+    onInput = async (text: string) => {
         const { commands: stateCommands,
             screenText: stateScreenText
         } = this.state
 
-        const executeCommand = (commandList: any, args: any, screenText: any) => (command: string) => {
-            const output = commandList.hasOwnProperty(command)
-                ? commandList[command].command(args, screenText)
-                : this.fallBackCommand(command, screenText)
-            return { command: [command].concat(args).join(" "), output }
-        }
+        const executeCommand = (commandList: any, args: any, screenText: any) =>
+            async (command: string) => {
+                const output = commandList.hasOwnProperty(command)
+                    ? await commandList[command].command(args, screenText)
+                    : this.fallBackCommand(command, screenText)
+                return { command: [command].concat(args).join(" "), output }
+            }
 
         const screenText = stateScreenText.concat({
             msg: text,
             path: this.getCurrentFolderPath()
         })
-        const execCommandCurried = executeCommand(stateCommands,
+        const execCommandCurried = await executeCommand(stateCommands,
             this.getRestArgs(text),
             screenText
         )
-        const printOutput = ({ output, commandHistory }: { output: string[], commandHistory: any }) => {
+        const printOutput = ({ output, commandHistory }:
+            { output: string[], commandHistory: any }) => {
             this.print(output)
             return { commandHistory }
         }
@@ -389,18 +391,19 @@ class Terminal extends Component<Props, State> {
         const prepareNewState = (history: string[]) => ({ commandHistory: history, historyPointer: 0 })
         const lens = lensProp("commandHistory")
         const over = curry((lens: any, store: any) => view(lens, store))
-        
-        const setState = (text:any) => this.setState(() => {return text})
+        const setState = (text: any) => this.setState(() => { return text })
 
-        pipe(
+        const output = await pipe(
             this.getCommandFromArgs,
-            execCommandCurried,
+            execCommandCurried
+        )(text)
+        pipe(
             this.appendToCommandHistory,
             printOutput,
             over(lens),
             prepareNewState,
             setState
-        )(text)
+        )(output)
     }
 
     getPointedCommand = (history: string[]) => (pointer: number) => (

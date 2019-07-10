@@ -6,13 +6,12 @@ export interface Message {
     path ?: string
 }
 
-const TextHistoric = (props: any) => {
-    console.log(props.screenText)
-    return props.screenText.map((text: Message, index: number) => {
+const TextHistoric = (props: any) =>(
+    props.screenText.map((text: Message, index: number) => {
         return <React.Fragment key={index}>
             <span style={{whiteSpace: "pre-line"}}>{`${ (text.type !== "output" && text.path) ? `[${text.path}] > ` : '  '} ${text.msg}`}</span><br />
         </React.Fragment>
     })
-}
+)
 
 export default TextHistoric

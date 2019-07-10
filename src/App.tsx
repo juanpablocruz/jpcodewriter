@@ -1,13 +1,15 @@
 import React from 'react';
 import './App.css';
-import Terminal from './Terminal/Terminal';
+import Terminal, { appendOutput } from './Terminal/Terminal';
 
-const about = (args: string[], print: any) => print("HI, MY NAME IS JUAN PABLO",
-  "IM NOT VERY GOOD ON TALKING ABOUT MYSELF SO I DECIDED TO CREATE",
-  "THIS WEBSITE IN ORDER TO LET IT SPEAK FOR ME.",
-  "SO GO TAKE A LOOK AROUND AND PLAY, AS THIS IS WHO I AM.")
+const about = (args: string[], screenText: string) => (
+  appendOutput(screenText)(["HI, MY NAME IS JUAN PABLO",
+    "IM NOT VERY GOOD ON TALKING ABOUT MYSELF SO I DECIDED TO CREATE",
+    "THIS WEBSITE IN ORDER TO LET IT SPEAK FOR ME.",
+    "SO GO TAKE A LOOK AROUND AND PLAY, AS THIS IS WHO I AM."])
+)
 
-const contact = (args: string[], print: any) => {
+const contact = (args: string[], screenText:string) => {
   let contactInf: { [key: string]: string } = {
     "NAME": "JUAN PABLO CRUZ",
     "EMAIL": "juanpablocruzmaseda@gmail.com",
@@ -19,7 +21,7 @@ const contact = (args: string[], print: any) => {
     for (let c in contactInf) {
       contactOptions.push(`${c}:\t\t${contactInf[c]}`)
     }
-    print(...contactOptions)
+    return appendOutput(screenText)(contactOptions)
   } else {
     let option = args[0]
     switch (option) {
@@ -39,14 +41,14 @@ const contact = (args: string[], print: any) => {
         window.open(contactInf["LINKEDIN"], '_blank')
         break;
       default:
-        print(`Unrecognized contact: ${option}`)
+        appendOutput(screenText)([`Unrecognized contact: ${option}`])
         break;
 
     }
   }
 }
 
-const work = (args: string[], print: any) => {
+const work = (args: string[], screenText: string) => {
   let work = [
     'Software architect at DIGI - (jan 2018 - current ) ',
     'Design and implementation of the architecture of new web applications,',
@@ -79,17 +81,17 @@ const work = (args: string[], print: any) => {
     'Tools and technologies used: Photoshop, illustrator, inDesign, php, javascript,',
     'html5, html, css3, jQuery, mysql.',
     '',]
-  print(...work)
+  return appendOutput(screenText)(work)
 }
 
-const studies = (args: string[], print: any) => {
+const studies = (args: string[], screenText: string) => {
   let studies = [
     'Universidad Complutense de Madrid - (2010 - 2013)',
     'Maths degree',
     '',
     'IES Virgen de la Paloma - (2012 - 2013)',
     'Multiplatform apps development',]
-  print(...studies)
+  appendOutput(screenText)(studies)
 }
 
 const commands = {

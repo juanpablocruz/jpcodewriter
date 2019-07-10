@@ -38,6 +38,13 @@ interface KeyMethodInput {
     currentLine: number
 }
 
+export const isValid = (keycode: number) => (keycode > 47 && keycode < 58) || // number keys
+    keycode === 32 || keycode === 13 || // spacebar & return key(s) (if you want to allow carriage returns)
+    (keycode > 64 && keycode < 91) || // letter keys
+    (keycode > 95 && keycode < 112) || // numpad keys
+    (keycode > 185 && keycode < 193) || // ;=,-./` (in order)
+    (keycode > 218 && keycode < 227)
+
 export default class Vim extends Component<Props, State>{
     tabSize: number
     getFromStart: any
@@ -160,12 +167,6 @@ export default class Vim extends Component<Props, State>{
     }
 
     processInsertModeInput(event: KeyboardEvent) {
-        const isValid = (keycode: number) => (keycode > 47 && keycode < 58) || // number keys
-            keycode === 32 || keycode === 13 || // spacebar & return key(s) (if you want to allow carriage returns)
-            (keycode > 64 && keycode < 91) || // letter keys
-            (keycode > 95 && keycode < 112) || // numpad keys
-            (keycode > 185 && keycode < 193) || // ;=,-./` (in order)
-            (keycode > 218 && keycode < 227)
         const keys = [
             {
                 type: "key",
@@ -296,7 +297,7 @@ export default class Vim extends Component<Props, State>{
         const deleteWord = (modifiers: string) => (modifiers.length && modifiers.charAt(modifiers.length - 1) === "d") ?
             pipe(removeFirstModifier, this.parseIntModifier, this.deleteWord)(modifiers)
             : modifiers
-            
+
         const removeLine = () => {
             const getLineUntilCursor = this.getFromStart(currentCol)
             const insertTextAndJoinCurry = this.insertTextAndJoin(text, currentLine)

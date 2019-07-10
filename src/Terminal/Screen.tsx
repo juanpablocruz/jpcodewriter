@@ -12,11 +12,14 @@ interface Props {
     currentPath: string
 }
 
-const Screen = (props: Props) => {
-    return <div className="screen">
+const Screen = (props: Props) => (
+    <div className="screen">
         <TextHistoric screenText={props.output} />
-        <Prompt onInput={props.onInput} currentPath={props.currentPath} getPrevCommand={props.getPrevCommand} color={props.color}/>
+        <Prompt onInput={props.onInput}
+            currentPath={props.currentPath}
+            getPrevCommand={props.getPrevCommand}
+            color={props.color} />
     </div>
-}
+)
 
 export default Screen

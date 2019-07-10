@@ -231,7 +231,7 @@ export default class Filesystem {
         }
         if (foundFolder.name === '.') {
             foundFolder = this.currentFolder
-            return;
+            return "";
         }
 
 
@@ -242,6 +242,7 @@ export default class Filesystem {
             this.currentFolder = holder.current
             this.currentFolderContents = this.appendCurrentAndParentFolder(holder.contents)
         }
+        return ""
     }
 
     getFolder(id: number) {
