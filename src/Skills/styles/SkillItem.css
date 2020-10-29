@@ -1,0 +1,102 @@
+.skill-badge {
+    
+    padding:0.5em 1em  0.5em 1em ;
+    position: relative;
+    margin: 0.3em;
+}
+
+.skill-badge.conquered span{
+    color: #333;
+    background: #FFB000;
+    padding: 0em 0.6em 0em 0.6em;
+}
+
+.skill-badge.amber {
+    color: #FFB000;
+}
+.skill-badge.amber.conquered:after,
+.skill-badge.amber.conquered:before {
+    border: 0.1em solid #FFB000;
+    border: 0.1em solid #FFB000;
+    bottom: 0;
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 10px;
+    height: 2em;
+}
+.skill-badge.amber.conquered:after {
+    border-left: none;
+    right:0;
+}
+
+.skill-badge.amber.conquered:before {
+    border-right: none;
+    left: 0;
+}
+.skill-badge.amber.conquered span{
+    color: #333;
+    background: #FFB000;
+    padding: 0em 0.6em 0em 0.6em;
+}
+
+
+.skill-badge.pink {
+    color: #FF1493;
+}
+.skill-badge.pink.conquered:after,
+.skill-badge.pink.conquered:before {
+    border: 0.1em solid #FF1493;
+    border: 0.1em solid #FF1493;
+    bottom: 0;
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 10px;
+    height: 2em;
+}
+
+.skill-badge.pink.conquered:after {
+    border-left: none;
+    right:0;
+}
+
+.skill-badge.pink.conquered:before {
+    border-right: none;
+    left: 0;
+}
+.skill-badge.pink.conquered span{
+    color: #333;
+    background: #FF1493;
+    padding: 0em 0.6em 0em 0.6em;
+}
+
+
+.skill-badge.appleGreen {
+    color: #33FF33;
+}
+.skill-badge.appleGreen.conquered:after,
+.skill-badge.appleGreen.conquered:before {
+    border: 0.1em solid #33FF33;
+    border: 0.1em solid #33FF33;
+    bottom: 0;
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 10px;
+    height: 2em;
+}
+.skill-badge.appleGreen.conquered:after {
+    border-left: none;
+    right:0;
+}
+
+.skill-badge.appleGreen.conquered:before {
+    border-right: none;
+    left: 0;
+}
+.skill-badge.appleGreen.conquered span{
+    color: #333;
+    background: #33FF33;
+    padding: 0em 0.6em 0em 0.6em;
+}

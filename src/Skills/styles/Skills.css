@@ -1,0 +1,7 @@
+.help-text {
+    position: fixed;
+    bottom: 0;
+    color: white;
+    z-index: 100;
+    left: 1em;
+}

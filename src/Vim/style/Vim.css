@@ -1,0 +1,15 @@
+.vim {
+    color: cornflowerblue;
+    width: 100%;
+}
+
+.vim p {
+    line-height: 1.1em;
+    margin: 0;
+    height: 1.1em;
+}
+
+.vim-footer-status {
+    color: black;
+    font-weight: lighter;
+}

@@ -9,7 +9,18 @@
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
     "react-scripts": "4.0.0",
-    "web-vitals": "^0.2.4"
+    "web-vitals": "^0.2.4",
+    "ascii-art": "^1.5.1",
+    "figlet": "^1.2.3",
+    "mathjs": "^6.0.2",
+    "p5": "^0.9.0",
+    "ramda": "^0.26.1",
+    "react-p5-wrapper": "^2.0.0",
+    "react-scramble": "^0.4.2",
+    "terminal-in-react": "^4.3.1",
+    "terminal-in-react-node-eval-plugin": "^2.0.0",
+    "terminal-in-react-pseudo-file-system-plugin": "^3.0.0",
+    "websql": "^1.0.0"
   },
   "scripts": {
     "start": "react-scripts start",
